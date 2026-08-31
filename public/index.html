@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StokPoin Automation Dashboard</title>
+  <!-- Google Fonts: Inter, Outfit, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient Glow FX -->
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1 class="logo-title">StokPoin <span>Automation</span></h1>
+          <p class="logo-sub">Penjadwalan & Otomasi Status Item CMS (Manual & Query Margin Minus)</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <div class="status-chip" id="serverStatusBadge">
+          <span class="pulse-dot"></span>
+          <span id="serverStatusText">Online</span>
+        </div>
+        <div class="clock-chip" id="liveClock">--:--:-- WIB</div>
+      </div>
+    </header>
+
+    <!-- Top Metrics Overview -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-icon schedule-icon">🛡️</div>
+        <div class="metric-info">
+          <span class="metric-label">Guard Margin Minus</span>
+          <h3 class="metric-value" id="cardMarminStatus">AKTIF</h3>
+          <span class="metric-detail" id="cardMarminInterval">Setiap 5 Menit Sekali</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon time-icon">⏰</div>
+        <div class="metric-info">
+          <span class="metric-label">Jadwal Harian Manual</span>
+          <h3 class="metric-value" id="cardDailyStatus">AKTIF</h3>
+          <span class="metric-detail" id="cardDailyTime">Pukul 22:00 WIB</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon plu-icon">🏷️</div>
+        <div class="metric-info">
+          <span class="metric-label">PLU Manual Terdaftar</span>
+          <h3 class="metric-value" id="cardPluCount">0 PLU</h3>
+          <span class="metric-detail" id="cardDailyAction">Aksi: NONAKTIF</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon lastrun-icon">🕒</div>
+        <div class="metric-info">
+          <span class="metric-label">Eksekusi Terakhir</span>
+          <h3 class="metric-value" id="cardLastRun">-</h3>
+          <span class="metric-detail" id="cardLastRunSummary">Belum ada riwayat</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workspace (2 Columns) -->
+    <div class="workspace-grid">
+      <!-- Left Column: Guard & Manual Controls -->
+      <div class="column-left">
+        
+        <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL (5 Menit Sekali Langsung Nonaktif) -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">🛡️</span>
+              <h2>Pencegah Margin Minus (Auto-Guard PostgreSQL)</h2>
+            </div>
+            <label class="switch-toggle" title="Aktifkan / Matikan Auto-Guard Margin Minus">
+              <input type="checkbox" id="toggleMarminGuard" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="section-desc">
+              Sistem akan otomatis mengecek database PostgreSQL secara berkala. <strong>Jika terdeteksi ada item dengan Margin Minus, sistem akan langsung menonaktifkannya di CMS secara seketika!</strong>
+            </p>
+            <div class="form-row mt-2">
+              <div class="form-group flex-1">
+                <label for="selectMarminInterval">Frekuensi Pengecekan Database</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">🔄</span>
+                  <select id="selectMarminInterval" class="custom-input">
+                    <option value="5" selected>Setiap 5 Menit Sekali</option>
+                    <option value="10">Setiap 10 Menit Sekali</option>
+                    <option value="15">Setiap 15 Menit Sekali</option>
+                    <option value="30">Setiap 30 Menit Sekali</option>
+                    <option value="60">Setiap 1 Jam Sekali</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group flex-1">
+                <label>Aksi Otomatis</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">⚡</span>
+                  <input type="text" value="Langsung Nonaktifkan di CMS" class="custom-input" disabled style="opacity:0.85; cursor:not-allowed;">
+                </div>
+              </div>
+            </div>
+
+            <div class="action-buttons-row mt-2">
+              <button class="btn btn-outline btn-sm" id="btnOpenDbModal">
+                <span>🐘</span> Pengaturan Database PostgreSQL
+              </button>
+              <button class="btn btn-warning btn-sm" id="btnRunMarminGuardNow">
+                <span>🛡️</span> Cek & Nonaktifkan Marmin Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: ⏰ Jadwal Harian Khusus PLU Manual -->
+        <div class="glass-card mt-3">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">⏰</span>
+              <h2>Jadwal Harian PLU Manual (Input Sendiri)</h2>
+            </div>
+            <label class="switch-toggle" title="Aktifkan / Matikan Jadwal Harian Manual">
+              <input type="checkbox" id="toggleDailySchedule" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="section-desc">
+              Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam tutup operasional toko).
+            </p>
+            <div class="form-row mt-2">
+              <div class="form-group flex-1">
+                <label for="inputDailyTime">Jam Eksekusi Harian (WIB)</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">🕒</span>
+                  <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
+                </div>
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="selectDailyAction">Aksi Yang Dilakukan</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">⚡</span>
+                  <select id="selectDailyAction" class="custom-input">
+                    <option value="nonaktif">Nonaktifkan Stok</option>
+                    <option value="aktif">Aktifkan Kembali</option>
+                    <option value="toggle">Toggle Status</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- PLU Chips Preview -->
+            <div class="plu-chips-header mt-2">
+              <span class="chips-title">Daftar PLU Manual:</span>
+              <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
+            </div>
+            <div class="plu-chips-container" id="pluChipsContainer">
+              <span class="chip-empty">Belum ada PLU manual. Klik <strong>"Input / Edit PLU"</strong>.</span>
+            </div>
+
+            <div class="action-buttons-row mt-2">
+              <button class="btn btn-outline btn-sm" id="btnOpenPluModal">
+                <span>📝</span> Input / Edit PLU
+              </button>
+              <button class="btn btn-outline btn-sm" id="btnCheckPluLive">
+                <span>🔍</span> Cek Status CMS
+              </button>
+              <button class="btn btn-primary btn-sm" id="btnSaveConfig">
+                <span>💾</span> Simpan Pengaturan
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Pratinjau Item Margin Minus Terdeteksi -->
+        <div class="glass-card mt-3" id="cardQuerySection">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">📊</span>
+              <h2>Data Margin Minus dari Database (PostgreSQL)</h2>
+              <span class="badge badge-danger" id="badgeDbCount">0 Item</span>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-sm btn-outline" id="btnRunQueryPreview">
+                <span>📊</span> Refresh Data DB
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="preview-header">
+              <h3>Hasil Item Margin Minus Saat Ini:</h3>
+              <small class="text-dim" id="dbLastQueryStatus">Belum dieksekusi</small>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table" id="tableDbPreview">
+                <thead>
+                  <tr>
+                    <th width="14%">PLU</th>
+                    <th width="36%">Deskripsi</th>
+                    <th width="12%">Stok LPP</th>
+                    <th width="14%">Hrg / Promo</th>
+                    <th width="12%">Margin %</th>
+                    <th width="12%">Margin MD %</th>
+                  </tr>
+                </thead>
+                <tbody id="tableDbBody">
+                  <tr class="empty-row">
+                    <td colspan="6">Klik <strong>"📊 Refresh Data DB"</strong> untuk memuat data margin minus.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Manual Run & Live Logs -->
+      <div class="column-right">
+        
+        <!-- Card: Eksekusi Manual Instan -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">⚡</span>
+              <h2>Eksekusi Manual Cepat</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="execution-actions-group">
+              <button class="btn btn-warning btn-block" id="btnRunMarminDirect">
+                <span>🛡️</span> Jalankan Guard Margin Minus Sekarang
+              </button>
+              <button class="btn btn-success btn-block mt-2" id="btnRunManualDirect">
+                <span>📋</span> Jalankan PLU Manual Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Terminal Console & Live Logs -->
+        <div class="glass-card terminal-card mt-3">
+          <div class="card-header terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="terminal-title">Live Activity Logs</span>
+            </div>
+            <div class="terminal-actions">
+              <button class="btn btn-xs btn-ghost" id="btnClearLogs">Bersihkan</button>
+            </div>
+          </div>
+          <div class="terminal-body" id="logConsole">
+            <div class="log-line info">
+              <span class="log-time">[--:--:--]</span>
+              <span class="log-msg">Menghubungkan ke server...</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 1: Input PLU Manual -->
+  <div class="modal-overlay" id="pluModalOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">📦</span>
+          <div>
+            <h3>Input / Kelola Daftar PLU Manual</h3>
+            <p class="modal-sub">Masukkan nomor PLU (1 nomor per baris atau dipisah koma)</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnClosePluModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-toolbar">
+          <span class="badge badge-info" id="modalPluCounter">0 PLU Terdeteksi</span>
+          <div class="toolbar-btns">
+            <label class="btn btn-xs btn-outline file-input-label">
+              <span>📁</span> Import .txt
+              <input type="file" id="modalFileInput" accept=".txt,.csv" style="display:none;">
+            </label>
+            <button class="btn btn-xs btn-ghost" id="btnModalClear">Kosongkan</button>
+          </div>
+        </div>
+        <textarea id="modalTextareaPlu" class="modal-textarea" rows="8" placeholder="0013500&#10;1550030&#10;0505880"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" id="btnCancelPluModal">Batal</button>
+        <button class="btn btn-sm btn-primary" id="btnSavePluModal">
+          <span>💾</span> Simpan & Terapkan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Konfigurasi Database PostgreSQL -->
+  <div class="modal-overlay" id="dbModalOverlay">
+    <div class="modal-card modal-card-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">🐘</span>
+          <div>
+            <h3>Konfigurasi Database PostgreSQL</h3>
+            <p class="modal-sub">Pengaturan koneksi untuk mengeksekusi query margin minus</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseDbModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="dbHost">Host / IP Server</label>
+            <input type="text" id="dbHost" class="custom-input" placeholder="localhost / 192.168.x.x" value="localhost">
+          </div>
+          <div class="form-group" style="width: 110px;">
+            <label for="dbPort">Port</label>
+            <input type="number" id="dbPort" class="custom-input" placeholder="5432" value="5432">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="dbUser">Username</label>
+            <input type="text" id="dbUser" class="custom-input" placeholder="postgres" value="postgres">
+          </div>
+          <div class="form-group flex-1">
+            <label for="dbPassword">Password</label>
+            <input type="password" id="dbPassword" class="custom-input" placeholder="Password DB">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="dbDatabase">Nama Database</label>
+            <input type="text" id="dbDatabase" class="custom-input" placeholder="postgres / indogrosir_db" value="postgres">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkFilterMarginMinusOnly" checked>
+            <span class="chk-custom"></span>
+            <span>Hanya ambil item yang Margin-nya MINUS (<code>MARGINACOST &lt; 0 OR MARGINLCOST &lt; 0</code>)</span>
+          </label>
+        </div>
+
+        <div class="form-group mt-2">
+          <details class="custom-details">
+            <summary>Lihat / Kustomisasi SQL Query Margin Minus</summary>
+            <textarea id="dbCustomQuery" class="modal-textarea mt-2" rows="6"></textarea>
+          </details>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-outline" id="btnTestDbConnection">
+          <span>🔌</span> Tes Koneksi
+        </button>
+        <button class="btn btn-sm btn-secondary" id="btnCancelDbModal">Batal</button>
+        <button class="btn btn-sm btn-primary" id="btnSaveDbModal">
+          <span>💾</span> Simpan Konfigurasi DB
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation Modal -->
+  <div class="modal-overlay" id="confirmModalOverlay">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon" id="confirmModalIcon">⚠️</span>
+          <div>
+            <h3 id="confirmModalTitle">Konfirmasi Tindakan</h3>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCancelConfirmX">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage" class="confirm-text">Apakah Anda yakin ingin melanjutkan?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" id="btnCancelConfirm">Batal</button>
+        <button class="btn btn-sm btn-primary" id="btnAcceptConfirm">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container (Top-Right) -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

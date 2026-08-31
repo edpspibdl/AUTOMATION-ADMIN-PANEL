@@ -1,0 +1,20 @@
+{
+  "marminGuardEnabled": true,
+  "marminIntervalMinutes": 5,
+  "dailyScheduleEnabled": true,
+  "dailyScheduleTime": "22:00",
+  "dailyAction": "nonaktif",
+  "plus": [
+    "0013500"
+  ],
+  "customQuery": "",
+  "dbConfig": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "",
+    "database": "postgres"
+  },
+  "lastRun": null,
+  "lastMarminRun": null
+}

@@ -1,0 +1,27 @@
+{
+  "name": "stokpoin-automation",
+  "version": "1.0.0",
+  "description": "Automation script for cms.stokpoin.com",
+  "main": "login.js",
+  "scripts": {
+    "start": "node server.js",
+    "ui": "node server.js",
+    "login": "node login.js",
+    "automate": "node automation.js",
+    "stock": "node automation_stock.js",
+    "stock:bulk": "node automation_stock.js --file plu_list.txt --action nonaktif"
+  },
+  "keywords": [
+    "playwright",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "node-cron": "^4.6.0",
+    "pg": "^8.23.0",
+    "playwright": "^1.50.1"
+  }
+}
