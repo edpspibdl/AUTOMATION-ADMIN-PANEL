@@ -6,10 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "ui": "node server.js",
-    "login": "node login.js",
-    "automate": "node automation.js",
-    "stock": "node automation_stock.js",
-    "stock:bulk": "node automation_stock.js --file plu_list.txt --action nonaktif"
+    "login": "node src/services/authService.js"
   },
   "keywords": [
     "playwright",
