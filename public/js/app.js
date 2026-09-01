@@ -1678,8 +1678,8 @@ const KROSCEK_ROWS = [
   { key: 'so', label: 'SO', rumus: 'LAP REKAP ADJUST SO --> Total', rule: 'IAS - BO - LPP' },
   { key: 'intransit', label: 'INTRANSIT', rumus: 'AKHIR BULAN HARUS = 0', rule: 'Akhir Bulan HARUS = 0', alert: true },
   { key: 'penyesuaian', label: 'PENYESUAIAN', rumus: 'REGISTER MPP --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
-  { key: 'koreksi', label: 'KOREKSI', rumus: '', rule: 'Koreksi Nilai' },
-  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: 'LPP BULAN INI vs LPP BULAN BARU', rule: 'Saldo Akhir Grand Total LPP 01', isHeader: true }
+  { key: 'koreksi', label: 'KOREKSI', rumus: '-', rule: 'Koreksi Nilai (Tidak Ada Pembanding)', noPembanding: true },
+  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: '-', rule: 'Saldo Akhir Grand Total LPP 01 (Hasil Akhir)', isHeader: true, noPembanding: true }
 ];
 
 const ANTAR_LPP_ITEMS = [
@@ -1732,14 +1732,20 @@ function renderKroscekTables() {
       pem.saldoAwalBulanME = vPem;
     }
 
-    const selisih = vLpp - vPem;
+    let isOk = true;
+    let selisih = 0;
 
-    let isOk = (selisih === 0);
-    if (row.tolerance && Math.abs(selisih) <= row.tolerance) {
+    if (row.noPembanding) {
       isOk = true;
+      selisih = 0;
+    } else {
+      selisih = vLpp - vPem;
+      isOk = (selisih === 0);
+      if (row.tolerance && Math.abs(selisih) <= row.tolerance) {
+        isOk = true;
+      }
+      if (!isOk) totalSelisihCount++;
     }
-
-    if (!isOk) totalSelisihCount++;
 
     const badgeSelisihClass = isOk
       ? 'background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4);'
@@ -1748,6 +1754,17 @@ function renderKroscekTables() {
     const rowBg = row.isHeader
       ? 'background: rgba(255,255,255,0.03); font-weight: 700;'
       : '';
+
+    const pembandingHtml = row.noPembanding
+      ? `<div style="text-align: center; color: var(--text-muted); font-size: 11px; font-style: italic;">-</div>`
+      : `<input type="text" class="custom-input kroscek-pem-input" data-key="${row.key}" value="${formatRp(vPem)}"
+          style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 600; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(6, 182, 212, 0.3);">`;
+
+    const selisihHtml = row.noPembanding
+      ? `<span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);">-</span>`
+      : `<span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; ${badgeSelisihClass}">
+          ${selisih > 0 ? '+' : ''}${formatRp(selisih)}
+        </span>`;
 
     mainHtml += `
       <tr style="${rowBg}">
@@ -1761,13 +1778,10 @@ function renderKroscekTables() {
           ${row.rumus ? `<span style="padding: 2px 6px; background: rgba(6, 182, 212, 0.1); border-radius: 4px; color: #06b6d4;">${escapeHtml(row.rumus)}</span>` : '-'}
         </td>
         <td style="padding: 4px 8px; text-align: right;">
-          <input type="text" class="custom-input kroscek-pem-input" data-key="${row.key}" value="${formatRp(vPem)}"
-            style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 600; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(6, 182, 212, 0.3);">
+          ${pembandingHtml}
         </td>
         <td style="padding: 6px 12px; text-align: right;">
-          <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; ${badgeSelisihClass}">
-            ${selisih > 0 ? '+' : ''}${formatRp(selisih)}
-          </span>
+          ${selisihHtml}
         </td>
         <td style="padding: 6px 12px; font-size: 11px; color: #f59e0b;">
           ${escapeHtml(row.rule)}
