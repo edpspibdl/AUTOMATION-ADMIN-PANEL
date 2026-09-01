@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
-const { addLog } = require('../utils/logger');
+const { addIasLog: addLog } = require('../utils/logger');
 
 class IasAutomationService {
   constructor() {

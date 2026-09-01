@@ -1337,12 +1337,59 @@ if (btnTestIasLogin) {
   });
 }
 
-// Event: Clear IAS Logs
-if (btnClearIasLogs) {
-  btnClearIasLogs.addEventListener('click', () => {
+// Event: Clear IAS Logs (Terpisah dari CMS StokPoin)
+async function clearIasLogsOnServer() {
+  try {
+    await fetch('/api/ias/logs/clear', { method: 'POST' });
+    lastIasLogCount = 0;
+    fetchIasLogs();
+    showAlert('info', 'Log IAS Dibersihkan', 'Riwayat log aktivitas Web IAS telah dikosongkan.');
+  } catch (err) {
     if (logIasConsole) logIasConsole.innerHTML = '';
-    addIasLog('info', 'Log aktivitas Web IAS telah dibersihkan.');
-  });
+  }
+}
+
+if (btnClearIasLogs) {
+  btnClearIasLogs.addEventListener('click', clearIasLogsOnServer);
+}
+
+// IAS Live Logs Polling (Terpisah dari terminal CMS StokPoin)
+let lastIasLogCount = 0;
+async function fetchIasLogs() {
+  try {
+    const res = await fetch('/api/ias/logs');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (data.logs && data.logs.length !== lastIasLogCount) {
+      lastIasLogCount = data.logs.length;
+      renderIasLogs(data.logs);
+    }
+  } catch (err) {}
+}
+
+function renderIasLogs(logs) {
+  if (!logIasConsole) return;
+  if (!logs || logs.length === 0) {
+    logIasConsole.innerHTML = `
+      <div class="log-line info">
+        <span class="log-time">[--:--:--]</span>
+        <span class="log-msg">Belum ada aktivitas log Web IAS.</span>
+      </div>
+    `;
+    return;
+  }
+
+  logIasConsole.innerHTML = logs.map(l => {
+    return `
+      <div class="log-line ${l.level || 'info'}">
+        <span class="log-time">[${l.timestamp}]</span>
+        <span class="log-msg">${escapeHtml(l.message)}</span>
+      </div>
+    `;
+  }).join('');
+
+  logIasConsole.scrollTop = logIasConsole.scrollHeight;
 }
 
 // Initial Load
@@ -1351,6 +1398,12 @@ initAdminNav();
 populateDefaultDates();
 loadConfig();
 loadIasConfig();
+
+// Poll Live Logs (Terpisah: CMS StokPoin vs Web IAS)
 setInterval(fetchLogs, 1500);
 fetchLogs();
+
+setInterval(fetchIasLogs, 1500);
+fetchIasLogs();
+
 

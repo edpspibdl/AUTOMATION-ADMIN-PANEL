@@ -6,7 +6,7 @@ const { executeMarminGuard } = require('../schedulers/marminGuardJob');
 const { executeDailySchedule } = require('../schedulers/dailyScheduleJob');
 const { setupSchedulers, isAnyTaskRunning } = require('../schedulers/schedulerManager');
 const { searchStockApi, ensureValidSession } = require('../services/stockService');
-const { addLog, getLogs, clearLogs } = require('../utils/logger');
+const { addLog, getLogs, clearLogs, addIasLog, getIasLogs, clearIasLogs } = require('../utils/logger');
 const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
 
 // 1. Ambil Konfigurasi Saat Ini
@@ -116,11 +116,25 @@ router.get('/ias/config', (req, res) => {
 router.post('/ias/config', (req, res) => {
   try {
     const updated = iasService.saveConfig(req.body);
-    addLog('success', '💾 Pengaturan Web IAS berhasil diperbarui.');
+    addIasLog('success', '💾 Pengaturan Web IAS berhasil diperbarui.');
     res.json({ success: true, config: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Ambil Live Logs Khusus Web IAS
+router.get('/ias/logs', (req, res) => {
+  res.json({
+    logs: getIasLogs(),
+    activeTask: iasService.activeTask || null
+  });
+});
+
+// Bersihkan Live Logs Khusus Web IAS
+router.post('/ias/logs/clear', (req, res) => {
+  clearIasLogs();
+  res.json({ success: true });
 });
 
 // Ambil Daftar Menu Web IAS
@@ -147,13 +161,13 @@ router.get('/ias/session/status', (req, res) => {
 // Uji Login & Koneksi Web IAS
 router.post('/ias/test-login', async (req, res) => {
   const customConfig = req.body;
-  addLog('info', `🌐 Menguji login ke portal Web IAS (${customConfig.baseUrl || 'http://172.31.146.190'})...`);
+  addIasLog('info', `🌐 Menguji login ke portal Web IAS (${customConfig.baseUrl || 'http://172.31.146.190'})...`);
   const result = await iasService.login(customConfig);
   if (result.success) {
-    addLog('success', `✅ Uji Login Web IAS BERHASIL! User: ${customConfig.username || 'RIS'}`);
+    addIasLog('success', `✅ Uji Login Web IAS BERHASIL! User: ${customConfig.username || 'RIS'}`);
     res.json(result);
   } else {
-    addLog('error', `❌ Uji Login Web IAS GAGAL: ${result.error}`);
+    addIasLog('error', `❌ Uji Login Web IAS GAGAL: ${result.error}`);
     res.status(400).json(result);
   }
 });
@@ -171,7 +185,7 @@ router.get('/ias/tasks/status', async (req, res) => {
 // Jalankan Task 1: Hitung Ulang Stock
 router.post('/ias/tasks/hitstok/run', async (req, res) => {
   try {
-    addLog('info', `🚀 Memulai pemicuan Task: Hitung Ulang Stock...`);
+    addIasLog('info', `🚀 Memulai pemicuan Task: Hitung Ulang Stock...`);
     const result = await iasService.runHitungUlangStock(req.body);
     res.json(result);
   } catch (err) {
@@ -182,7 +196,7 @@ router.post('/ias/tasks/hitstok/run', async (req, res) => {
 // Jalankan Task 2: Proses LPP
 router.post('/ias/tasks/lpp/run', async (req, res) => {
   try {
-    addLog('info', `🚀 Memulai pemicuan Task: Proses LPP (${req.body.mode === 'harian' ? 'Harian' : 'Bulanan'})...`);
+    addIasLog('info', `🚀 Memulai pemicuan Task: Proses LPP (${req.body.mode === 'harian' ? 'Harian' : 'Bulanan'})...`);
     const result = await iasService.runProsesLPP(req.body);
     res.json(result);
   } catch (err) {
