@@ -1,6 +1,7 @@
 const { searchStockApi, toggleStockApi } = require('../services/stockService');
 const { loadConfig, updateConfig } = require('../config/configManager');
 const { addLog } = require('../utils/logger');
+const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
 
 let isDailyRunning = false;
 
@@ -17,7 +18,7 @@ async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual') {
   isDailyRunning = true;
   const config = loadConfig();
   const action = config.dailyAction || 'nonaktif';
-  const targetPlus = (config.plus || []).map(p => p.toString().trim()).filter(Boolean);
+  const targetPlus = normalizeAndDeduplicatePlus(config.plus || []);
 
   addLog('info', `▶️ [JADWAL MANUAL] Mulai eksekusi [${triggerSource}]. Target: ${targetPlus.length} PLU Manual, Aksi: [${action.toUpperCase()}]`);
 

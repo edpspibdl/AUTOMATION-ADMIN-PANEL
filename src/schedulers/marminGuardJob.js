@@ -2,6 +2,7 @@ const { fetchMarginMinusData } = require('../database/connection');
 const { searchStockApi, toggleStockApi } = require('../services/stockService');
 const { loadConfig, updateConfig } = require('../config/configManager');
 const { addLog } = require('../utils/logger');
+const { normalizePlu } = require('../utils/pluHelper');
 
 let isMarminRunning = false;
 
@@ -27,7 +28,7 @@ async function executeMarminGuard(triggerSource = 'Auto-Guard (5 Menit)') {
       return { success: false, error: dbRes.error };
     }
 
-    const items = dbRes.items || [];
+    const items = (dbRes.items || []).filter(item => item.plu && item.plu.endsWith('0'));
     const plus = dbRes.plus || [];
 
     if (items.length === 0) {

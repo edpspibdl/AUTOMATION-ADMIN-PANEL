@@ -108,7 +108,12 @@ async function toggleStockApi(stockId, retryCount = 0) {
     throw new Error(`Toggle API error: HTTP ${res.status}`);
   }
 
-  return await res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return { success: true, raw: text };
+  }
 }
 
 module.exports = {

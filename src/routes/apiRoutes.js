@@ -7,6 +7,7 @@ const { executeDailySchedule } = require('../schedulers/dailyScheduleJob');
 const { setupSchedulers, isAnyTaskRunning } = require('../schedulers/schedulerManager');
 const { searchStockApi, ensureValidSession } = require('../services/stockService');
 const { addLog, getLogs, clearLogs } = require('../utils/logger');
+const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
 
 // 1. Ambil Konfigurasi Saat Ini
 router.get('/config', (req, res) => {
@@ -19,7 +20,11 @@ router.get('/config', (req, res) => {
 
 // 2. Perbarui Konfigurasi
 router.post('/config', (req, res) => {
-  const updated = updateConfig(req.body);
+  const body = req.body || {};
+  if (Array.isArray(body.plus)) {
+    body.plus = normalizeAndDeduplicatePlus(body.plus);
+  }
+  const updated = updateConfig(body);
   setupSchedulers();
   addLog('success', '💾 Pengaturan sistem berhasil disimpan dan penjadwal diperbarui!');
   res.json({ success: true, config: updated });
@@ -87,18 +92,17 @@ router.post('/run-manual-now', async (req, res) => {
 // 7. Cek Status Real-Time PLU di CMS StokPoin
 router.post('/check-plus', async (req, res) => {
   const { plus } = req.body;
-  if (!plus || !Array.isArray(plus) || plus.length === 0) {
-    return res.status(400).json({ success: false, message: 'Daftar PLU kosong.' });
+  const cleanPlus = normalizeAndDeduplicatePlus(plus);
+  if (cleanPlus.length === 0) {
+    return res.status(400).json({ success: false, message: 'Daftar PLU tidak valid.' });
   }
 
   try {
-    addLog('info', `🔍 Memeriksa status real-time ${plus.length} PLU di server CMS...`);
+    addLog('info', `🔍 Memeriksa status real-time ${cleanPlus.length} PLU di server CMS...`);
     await ensureValidSession();
 
     const items = [];
-    for (const p of plus) {
-      const clean = p.toString().trim();
-      if (!clean) continue;
+    for (const clean of cleanPlus) {
       const resItems = await searchStockApi({ plu: clean });
       if (resItems && resItems.length > 0) {
         resItems.forEach(item => {

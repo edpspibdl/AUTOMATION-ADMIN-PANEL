@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const { DEFAULT_MARGIN_QUERY } = require('./queries');
+const { normalizePlu } = require('../utils/pluHelper');
 
 function createPool(dbConfig = {}) {
   return new Pool({
@@ -49,16 +50,24 @@ async function fetchMarginMinusData(dbConfig, customQuery = null) {
     client.release();
     await pool.end();
 
-    const items = res.rows.map(r => {
-      const pluRaw = (r.plu || r.prd_prdcd || '').toString().trim();
+    const seenPlus = new Set();
+    const items = [];
+
+    for (const r of res.rows) {
+      const pluNormalized = normalizePlu(r.plu || r.prd_prdcd);
+      if (!pluNormalized || pluNormalized.length !== 7 || seenPlus.has(pluNormalized)) {
+        continue;
+      }
+      seenPlus.add(pluNormalized);
+
       const marginA = r.margin !== null && r.margin !== undefined ? parseFloat(r.margin).toFixed(2) : '-';
       const marginMd = r.margin_a_md !== null && r.margin_a_md !== undefined ? parseFloat(r.margin_a_md).toFixed(2) : '-';
       const marginL = r.margin_lcost !== null && r.margin_lcost !== undefined ? parseFloat(r.margin_lcost).toFixed(2) : '-';
       const marginLMd = r.margin_l_md !== null && r.margin_l_md !== undefined ? parseFloat(r.margin_l_md).toFixed(2) : '-';
 
-      return {
+      items.push({
         div: r.div || '-',
-        plu: pluRaw,
+        plu: pluNormalized,
         deskripsi: r.deskripsi || r.desk || '-',
         frac: r.frac || 1,
         unit: r.unit || 'PCS',
@@ -72,8 +81,8 @@ async function fetchMarginMinusData(dbConfig, customQuery = null) {
         marginMd,
         marginL,
         marginLMd
-      };
-    }).filter(item => item.plu);
+      });
+    }
 
     return {
       success: true,
