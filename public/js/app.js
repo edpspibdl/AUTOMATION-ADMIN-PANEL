@@ -1887,6 +1887,43 @@ if (btnFetchPrevLpp) {
   });
 }
 
+const btnFetchDaftarPembelian = document.getElementById('btnFetchDaftarPembelian');
+
+// Button Fetch Daftar Pembelian
+if (btnFetchDaftarPembelian) {
+  btnFetchDaftarPembelian.addEventListener('click', async () => {
+    const origText = btnFetchDaftarPembelian.innerHTML;
+    btnFetchDaftarPembelian.disabled = true;
+    btnFetchDaftarPembelian.innerHTML = '<span>⏳</span> Menarik Pembelian...';
+
+    const tgl1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    const tgl2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : tgl1;
+    addIasLog('info', `🛍️ Memulai penarikan Laporan Daftar Pembelian (${tgl1} s/d ${tgl2})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-daftar-pembelian', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tgl1, tgl2 })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        const murniStr = Number(json.pembelianMurni).toLocaleString('id-ID');
+        showAlert('success', 'Daftar Pembelian Berhasil Ditarik', `Gross - Potongan + Disc4 = Rp ${murniStr} berhasil diisi ke kolom pembanding.`);
+      } else {
+        showAlert('error', 'Gagal Menarik Pembelian', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchDaftarPembelian.disabled = false;
+      btnFetchDaftarPembelian.innerHTML = origText;
+    }
+  });
+}
+
 // Button Sync Grand Total LPP 01
 if (btnSyncKroscekLpp01) {
   btnSyncKroscekLpp01.addEventListener('click', async () => {

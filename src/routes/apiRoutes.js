@@ -344,6 +344,15 @@ router.post('/ias/kroscek/fetch-prev-lpp', async (req, res) => {
   }
 });
 
+router.post('/ias/kroscek/fetch-daftar-pembelian', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseDaftarPembelian(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.get('/ias/kroscek/export-csv', (req, res) => {
   const data = iasService.getKroscekData();
   const escapeCsv = (str) => {

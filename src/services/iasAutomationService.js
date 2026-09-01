@@ -1225,6 +1225,87 @@ class IasAutomationService {
       kroscekData: kData
     };
   }
+
+  async fetchAndParseDaftarPembelian(opts = {}) {
+    const config = this.getConfig();
+    const tgl1 = opts.tgl1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || config.periode2 || tgl1;
+
+    addLog('info', `[IAS] 🛍️ Mengambil Laporan Daftar Pembelian (Periode: ${tgl1} s/d ${tgl2})...`);
+
+    const session = await this.createSession();
+    const page = session.page;
+
+    const url = `http://172.31.146.190/bo/laporan/daftar-pembelian/cetak?tipe=1&tgl1=${tgl1}&tgl2=${tgl2}&div1=&div2=&dep1=&dep2=&kat1=&kat2=&sup1=&sup2=&mtr=&sort=1`;
+
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+      const html = await page.content();
+
+      let gross = 0;
+      let potongan = 0;
+      let disc4 = 0;
+      let ppn = 0;
+      let ppnBebas = 0;
+      let ppnDtp = 0;
+      let totalNilai = 0;
+      let pembelianMurni = 0;
+
+      if (html.includes('TIDAK ADA DATA')) {
+        addLog('info', `[IAS] ℹ️ Laporan Daftar Pembelian (${tgl1} s/d ${tgl2}): TIDAK ADA DATA. Nilai dihitung 0.`);
+      } else {
+        const match = html.match(/<tr[^>]*>(?:(?!<tr)[\s\S])*?TOTAL\s+SELURUHNYA[\s\S]*?<\/tr>/i);
+        if (match) {
+          const rowHtml = match[0];
+          const cells = [];
+          const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+          let m;
+          while ((m = cellRegex.exec(rowHtml)) !== null) {
+            cells.push(m[1].replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' '));
+          }
+
+          const parseVal = (str) => {
+            if (!str) return 0;
+            return parseFloat(String(str).replace(/,/g, '').trim()) || 0;
+          };
+
+          if (cells.length >= 8) {
+            gross = parseVal(cells[1]);
+            potongan = parseVal(cells[2]);
+            disc4 = parseVal(cells[3]);
+            ppn = parseVal(cells[4]);
+            ppnBebas = parseVal(cells[5]);
+            ppnDtp = parseVal(cells[6]);
+            totalNilai = parseVal(cells[7]);
+            pembelianMurni = Math.round(gross - potongan + disc4);
+          }
+        }
+      }
+
+      // Update ke file kroscek data
+      const kData = this.getKroscekData();
+      kData.pembanding.pembelianMurni = pembelianMurni;
+      this.saveKroscekData(kData);
+
+      addLog('success', `[IAS] ✅ [DAFTAR PEMBELIAN] Gross: Rp ${gross.toLocaleString('id-ID')} | Potongan: Rp ${potongan.toLocaleString('id-ID')} | Disc4: Rp ${disc4.toLocaleString('id-ID')} => Pembelian Murni: Rp ${pembelianMurni.toLocaleString('id-ID')}`);
+
+      return {
+        success: true,
+        periode: `${tgl1} s/d ${tgl2}`,
+        gross,
+        potongan,
+        disc4,
+        ppn,
+        ppnBebas,
+        ppnDtp,
+        totalNilai,
+        pembelianMurni,
+        kroscekData: kData
+      };
+    } finally {
+      await session.browser.close().catch(() => {});
+    }
+  }
 }
 
 module.exports = new IasAutomationService();
