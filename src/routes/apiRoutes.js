@@ -89,49 +89,7 @@ router.post('/run-manual-now', async (req, res) => {
   res.json({ success: true, message: 'Otomatisasi PLU manual telah dimulai.' });
 });
 
-// 7. Cek Status Real-Time PLU di CMS StokPoin
-router.post('/check-plus', async (req, res) => {
-  const { plus } = req.body;
-  const cleanPlus = normalizeAndDeduplicatePlus(plus);
-  if (cleanPlus.length === 0) {
-    return res.status(400).json({ success: false, message: 'Daftar PLU tidak valid.' });
-  }
-
-  try {
-    addLog('info', `🔍 Memeriksa status real-time ${cleanPlus.length} PLU di server CMS...`);
-    await ensureValidSession();
-
-    const items = [];
-    for (const clean of cleanPlus) {
-      const resItems = await searchStockApi({ plu: clean });
-      if (resItems && resItems.length > 0) {
-        resItems.forEach(item => {
-          items.push({
-            plu: clean,
-            desc: item.long_description || item.name || '-',
-            qty: item.qty || '0',
-            flag: item.flag || 'UNKNOWN'
-          });
-        });
-      } else {
-        items.push({
-          plu: clean,
-          desc: '(Tidak Ditemukan)',
-          qty: 0,
-          flag: 'NOT_FOUND'
-        });
-      }
-    }
-
-    addLog('success', `✅ Pengecekan CMS selesai. ${items.length} item ditemukan.`);
-    res.json({ success: true, items });
-  } catch (err) {
-    addLog('error', `❌ Gagal memeriksa status PLU: ${err.message}`);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 8. Ambil Live Logs
+// 7. Ambil Live Logs
 router.get('/logs', (req, res) => {
   res.json({
     logs: getLogs(),
