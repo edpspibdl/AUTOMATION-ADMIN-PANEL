@@ -622,8 +622,42 @@ async function clearLogs() {
   } catch (err) {}
 }
 
+// 10.5. Check Live PLU Status in CMS
+async function checkPluStatusLive() {
+  const plus = currentConfig.plus || [];
+  if (plus.length === 0) {
+    showAlert('warning', 'Daftar Kosong', 'Belum ada PLU manual untuk dicek. Silakan klik "Input / Edit PLU" terlebih dahulu.');
+    return;
+  }
+
+  try {
+    btnCheckPluLive.disabled = true;
+    btnCheckPluLive.innerHTML = '<span>⏳</span> Memeriksa...';
+    showAlert('info', 'Memeriksa CMS', `Sedang memeriksa status ${plus.length} PLU langsung di CMS StokPoin...`);
+
+    const res = await fetch('/api/check-plus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plus })
+    });
+
+    const data = await res.json();
+    if (data.success && data.items) {
+      showAlert('success', 'Pengecekan Selesai', `Berhasil memeriksa ${data.items.length} item. Lihat log terminal untuk detail status.`);
+    } else {
+      showAlert('error', 'Pengecekan Gagal', data.error || data.message);
+    }
+  } catch (err) {
+    showAlert('error', 'Kesalahan Sistem', err.message);
+  } finally {
+    btnCheckPluLive.disabled = false;
+    btnCheckPluLive.innerHTML = '<span>🔍</span> Cek Status CMS';
+  }
+}
+
 // Event Listeners
 btnSaveConfig.addEventListener('click', saveAllConfig);
+btnCheckPluLive.addEventListener('click', checkPluStatusLive);
 toggleMarminGuard.addEventListener('change', saveAllConfig);
 selectMarminInterval.addEventListener('change', saveAllConfig);
 toggleDailySchedule.addEventListener('change', saveAllConfig);
