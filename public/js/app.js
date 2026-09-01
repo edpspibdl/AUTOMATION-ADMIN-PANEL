@@ -784,6 +784,16 @@ const cardIasLastRefresh = document.getElementById('cardIasLastRefresh');
 const cardIasSessionValue = document.getElementById('cardIasSessionValue');
 const cardIasSessionDetail = document.getElementById('cardIasSessionDetail');
 const badgeIasAutoLogin = document.getElementById('badgeIasAutoLogin');
+const btnToggleIasConfig = document.getElementById('btnToggleIasConfig');
+const drawerIasConfig = document.getElementById('drawerIasConfig');
+
+if (btnToggleIasConfig && drawerIasConfig) {
+  btnToggleIasConfig.addEventListener('click', () => {
+    const isHidden = drawerIasConfig.style.display === 'none' || !drawerIasConfig.style.display;
+    drawerIasConfig.style.display = isHidden ? 'block' : 'none';
+    btnToggleIasConfig.classList.toggle('active', isHidden);
+  });
+}
 
 let isIasConnecting = false;
 
