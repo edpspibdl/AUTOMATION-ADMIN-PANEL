@@ -536,6 +536,74 @@
           </div>
         </div>
 
+        <!-- 3. Task Card 3: Cetak Register LPP (Data Pembanding) -->
+        <div class="glass-card mb-3" style="border: 1px solid rgba(59, 130, 246, 0.25);">
+          <div class="card-header" style="padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
+              <span class="card-icon" style="font-size: 18px;">📊</span>
+              <h2 style="font-size: 15px; margin: 0;">Cetak Register LPP (Data Pembanding Persediaan)</h2>
+              <span class="badge badge-primary" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">18 Kolom Ekstraksi</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn btn-outline btn-sm" id="btnOpenLppModal" style="font-size: 12px; height: 32px; display: none;">
+                <span>🔍</span> Lihat Tabel Pembanding
+              </button>
+              <a href="/api/ias/register-lpp/export-csv" class="btn btn-outline btn-sm" id="btnExportLppCsv" style="font-size: 12px; height: 32px; text-decoration: none; display: none;" download>
+                <span>📥</span> Unduh CSV
+              </a>
+              <span class="task-badge-live task-badge-waiting" id="badgeRegisterLppStatus">
+                <span>●</span> STANDBY
+              </span>
+            </div>
+          </div>
+
+          <div class="card-body" style="padding: 16px 18px;">
+            <p class="section-desc" style="font-size: 12px; margin-bottom: 14px;">
+              Mengambil laporan Register LPP dari <code>/bo/lpp/register-lpp/cetak</code> untuk periode aktif dan mengekstrak seluruh nilai kolom (Saldo Awal, Pembelian, Penerimaan, Pengeluaran, SO, Penyesuaian, Koreksi, Saldo Akhir) sebagai data pembanding.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+              <!-- Stat 1: Saldo Awal -->
+              <div style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-dim);">Saldo Awal (Grand Total)</div>
+                <div id="statLppSaldoAwalRp" style="font-size: 15px; font-weight: 700; color: var(--text-main); margin-top: 4px;">Rp -</div>
+                <div id="statLppSaldoAwalQty" style="font-size: 11px; color: var(--primary); margin-top: 2px;">Qty: -</div>
+              </div>
+
+              <!-- Stat 2: Pembelian -->
+              <div style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-dim);">Pembelian (Murni + Bonus)</div>
+                <div id="statLppPembelian" style="font-size: 15px; font-weight: 700; color: var(--success); margin-top: 4px;">Rp -</div>
+                <div id="statLppPenerimaanLain" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Penerimaan Lain: -</div>
+              </div>
+
+              <!-- Stat 3: Penjualan & Pengeluaran -->
+              <div style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-dim);">Penjualan</div>
+                <div id="statLppPenjualan" style="font-size: 15px; font-weight: 700; color: var(--warning); margin-top: 4px;">Rp -</div>
+                <div id="statLppPengeluaranLain" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Pengeluaran Lain / SO: -</div>
+              </div>
+
+              <!-- Stat 4: Saldo Akhir -->
+              <div style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-dim);">Saldo Akhir (Grand Total)</div>
+                <div id="statLppSaldoAkhirRp" style="font-size: 15px; font-weight: 700; color: var(--primary); margin-top: 4px;">Rp -</div>
+                <div id="statLppSaldoAkhirQty" style="font-size: 11px; color: var(--primary); margin-top: 2px;">Qty: -</div>
+              </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="btnFetchRegisterLpp" style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
+                <span>⚡</span> Cetak & Ambil Data Pembanding
+              </button>
+              <button class="btn btn-outline" id="btnCheckRegisterLppLatest" style="height: 38px; padding: 0 16px; font-size: 12px;" title="Muat Ulang Data Terakhir">
+                <span>🔄</span> Muat Data Terakhir
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Hidden container for backwards-compatible elements -->
         <div style="display: none;">
           <div id="cardHitstokStatus"></div>
@@ -696,6 +764,81 @@
       <div class="modal-footer">
         <button class="btn btn-sm btn-secondary" id="btnCancelConfirm">Batal</button>
         <button class="btn btn-sm btn-primary" id="btnAcceptConfirm">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Tabel Lengkap Data Pembanding Register LPP -->
+  <div class="modal-overlay" id="lppModalOverlay">
+    <div class="modal-card" style="max-width: 96vw; width: 1440px; max-height: 92vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="padding: 14px 20px;">
+        <div class="modal-title-group">
+          <span class="modal-icon">📊</span>
+          <div>
+            <h3 id="lppModalTitle" style="font-size: 16px;">Data Pembanding: Register LPP (Posisi & Mutasi Persediaan)</h3>
+            <p class="modal-sub" id="lppModalSubtitle" style="font-size: 11.5px;">Menampilkan 18 kolom data lengkap per kategori barang</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseLppModal">&times;</button>
+      </div>
+
+      <!-- Filter Toolbar -->
+      <div style="padding: 10px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: rgba(0,0,0,0.15);">
+        <div style="display: flex; gap: 10px; align-items: center; flex: 1; min-width: 280px;">
+          <input type="text" id="inputFilterLppTable" class="custom-input" placeholder="🔍 Cari Kode, Kategori, atau Departemen..." style="height: 34px; font-size: 12px; max-width: 320px;">
+          <select id="selectFilterLppDivisi" class="custom-input" style="height: 34px; font-size: 12px; width: 180px;">
+            <option value="">Semua Divisi</option>
+            <option value="FOOD">1 - FOOD</option>
+            <option value="NON FOOD">2 - NON FOOD</option>
+            <option value="GENERAL">3 - GENERAL MERCHANDISING</option>
+          </select>
+          <span class="badge badge-info" id="badgeLppRowCount">0 Kategori</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="/api/ias/register-lpp/export-csv" class="btn btn-sm btn-outline" download style="text-decoration: none; display: flex; align-items: center; gap: 4px;">
+            <span>📥</span> Unduh CSV
+          </a>
+          <button class="btn btn-sm btn-secondary" id="btnCloseLppModalBtn">Tutup</button>
+        </div>
+      </div>
+
+      <!-- Table Container with Horizontal & Vertical Scroll -->
+      <div class="modal-body" style="padding: 0; overflow: auto; flex: 1;">
+        <div style="overflow-x: auto; width: 100%;">
+          <table class="db-table" id="tableLppDetail" style="font-size: 11.5px; white-space: nowrap; width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="position: sticky; top: 0; z-index: 10; background: var(--bg-card-header);">
+                <th style="padding: 8px 10px; text-align: left;">DIVISI</th>
+                <th style="padding: 8px 10px; text-align: left;">DEPARTEMEN</th>
+                <th style="padding: 8px 10px; text-align: center;">KODE</th>
+                <th style="padding: 8px 10px; text-align: left;">NAMA KATEGORI</th>
+                <th style="padding: 8px 10px; text-align: right;">SALDO AWAL (RP)</th>
+                <th style="padding: 8px 10px; text-align: right;">SALDO AWAL (QTY)</th>
+                <th style="padding: 8px 10px; text-align: right;">MURNI</th>
+                <th style="padding: 8px 10px; text-align: right;">BONUS</th>
+                <th style="padding: 8px 10px; text-align: right;">TRANSFER IN</th>
+                <th style="padding: 8px 10px; text-align: right;">RETUR JUAL</th>
+                <th style="padding: 8px 10px; text-align: right;">REPACK IN</th>
+                <th style="padding: 8px 10px; text-align: right;">PENERIMAAN LAIN</th>
+                <th style="padding: 8px 10px; text-align: right;">PENJUALAN</th>
+                <th style="padding: 8px 10px; text-align: right;">TRANSFER OUT</th>
+                <th style="padding: 8px 10px; text-align: right;">REPACK OUT</th>
+                <th style="padding: 8px 10px; text-align: right;">HILANG</th>
+                <th style="padding: 8px 10px; text-align: right;">PENGELUARAN LAIN</th>
+                <th style="padding: 8px 10px; text-align: right;">SO</th>
+                <th style="padding: 8px 10px; text-align: right;">PENYESUAIAN</th>
+                <th style="padding: 8px 10px; text-align: right;">KOREKSI</th>
+                <th style="padding: 8px 10px; text-align: right;">SALDO AKHIR (RP)</th>
+                <th style="padding: 8px 10px; text-align: right;">SALDO AKHIR (QTY)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyLppDetail">
+              <tr class="empty-row">
+                <td colspan="22" style="text-align: center; padding: 24px;">Klik "Cetak & Ambil Data Pembanding" untuk memuat data.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

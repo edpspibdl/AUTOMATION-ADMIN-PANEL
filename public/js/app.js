@@ -1392,12 +1392,262 @@ function renderIasLogs(logs) {
   logIasConsole.scrollTop = logIasConsole.scrollHeight;
 }
 
+// ============================================================================
+// TASK 3: REGISTER LPP (Data Pembanding Persediaan)
+// ============================================================================
+const btnFetchRegisterLpp = document.getElementById('btnFetchRegisterLpp');
+const btnCheckRegisterLppLatest = document.getElementById('btnCheckRegisterLppLatest');
+const btnOpenLppModal = document.getElementById('btnOpenLppModal');
+const btnExportLppCsv = document.getElementById('btnExportLppCsv');
+const badgeRegisterLppStatus = document.getElementById('badgeRegisterLppStatus');
+
+const statLppSaldoAwalRp = document.getElementById('statLppSaldoAwalRp');
+const statLppSaldoAwalQty = document.getElementById('statLppSaldoAwalQty');
+const statLppPembelian = document.getElementById('statLppPembelian');
+const statLppPenerimaanLain = document.getElementById('statLppPenerimaanLain');
+const statLppPenjualan = document.getElementById('statLppPenjualan');
+const statLppPengeluaranLain = document.getElementById('statLppPengeluaranLain');
+const statLppSaldoAkhirRp = document.getElementById('statLppSaldoAkhirRp');
+const statLppSaldoAkhirQty = document.getElementById('statLppSaldoAkhirQty');
+
+// Modal Elements
+const lppModalOverlay = document.getElementById('lppModalOverlay');
+const btnCloseLppModal = document.getElementById('btnCloseLppModal');
+const btnCloseLppModalBtn = document.getElementById('btnCloseLppModalBtn');
+const inputFilterLppTable = document.getElementById('inputFilterLppTable');
+const selectFilterLppDivisi = document.getElementById('selectFilterLppDivisi');
+const badgeLppRowCount = document.getElementById('badgeLppRowCount');
+const tbodyLppDetail = document.getElementById('tbodyLppDetail');
+
+let cachedRegisterLpp = null;
+
+function formatRp(val) {
+  if (!val || val === '0' || val === '-') return '0';
+  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function applyLppDataToUi(data) {
+  if (!data || !data.success) return;
+  cachedRegisterLpp = data;
+
+  const gt = data.grandTotal;
+  if (gt) {
+    if (statLppSaldoAwalRp) statLppSaldoAwalRp.textContent = `Rp ${gt.saldoAwal?.rp || '0'}`;
+    if (statLppSaldoAwalQty) statLppSaldoAwalQty.textContent = `Qty: ${gt.saldoAwal?.qty || '0'}`;
+
+    const murni = parseInt((gt.pembelianMurni || gt.murni || '0').replace(/,/g, ''), 10) || 0;
+    const bonus = parseInt((gt.pembelianBonus || gt.bonus || '0').replace(/,/g, ''), 10) || 0;
+    if (statLppPembelian) statLppPembelian.textContent = `Rp ${formatRp(murni + bonus)}`;
+    if (statLppPenerimaanLain) statLppPenerimaanLain.textContent = `Trf In: ${gt.transferIn || '0'} • Lain: ${gt.penerimaanLain || '0'}`;
+
+    if (statLppPenjualan) statLppPenjualan.textContent = `Rp ${gt.penjualan || '0'}`;
+    if (statLppPengeluaranLain) statLppPengeluaranLain.textContent = `Hilang: ${gt.hilang || '0'} • SO: ${gt.so || '0'}`;
+
+    if (statLppSaldoAkhirRp) statLppSaldoAkhirRp.textContent = `Rp ${gt.saldoAkhir?.rp || '0'}`;
+    if (statLppSaldoAkhirQty) statLppSaldoAkhirQty.textContent = `Qty: ${gt.saldoAkhir?.qty || '0'}`;
+  }
+
+  renderTaskBadge(badgeRegisterLppStatus, 'DONE');
+
+  if (btnOpenLppModal) btnOpenLppModal.style.display = 'inline-flex';
+  if (btnExportLppCsv) btnExportLppCsv.style.display = 'inline-flex';
+
+  renderLppTable();
+}
+
+function renderLppTable() {
+  if (!cachedRegisterLpp || !tbodyLppDetail) return;
+
+  const query = (inputFilterLppTable ? inputFilterLppTable.value.trim().toLowerCase() : '');
+  const divFilter = (selectFilterLppDivisi ? selectFilterLppDivisi.value.trim().toUpperCase() : '');
+
+  let filtered = (cachedRegisterLpp.categories || []).filter(c => {
+    if (divFilter && !c.divisi.toUpperCase().includes(divFilter)) return false;
+    if (query) {
+      const matchKode = c.kode.toLowerCase().includes(query);
+      const matchKat = c.namaKategori.toLowerCase().includes(query);
+      const matchDept = c.departemen.toLowerCase().includes(query);
+      const matchDiv = c.divisi.toLowerCase().includes(query);
+      return matchKode || matchKat || matchDept || matchDiv;
+    }
+    return true;
+  });
+
+  if (badgeLppRowCount) {
+    badgeLppRowCount.textContent = `${filtered.length} Kategori`;
+  }
+
+  if (filtered.length === 0) {
+    tbodyLppDetail.innerHTML = `
+      <tr class="empty-row">
+        <td colspan="22" style="text-align: center; padding: 24px; color: var(--text-dim);">
+          Tidak ada kategori yang cocok dengan filter pencarian.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  let html = '';
+  filtered.forEach(c => {
+    html += `
+      <tr>
+        <td style="padding: 6px 10px; color: var(--text-dim);">${escapeHtml(c.divisi)}</td>
+        <td style="padding: 6px 10px; color: var(--text-dim);">${escapeHtml(c.departemen)}</td>
+        <td style="padding: 6px 10px; text-align: center; font-weight: 600;">${escapeHtml(c.kode)}</td>
+        <td style="padding: 6px 10px; font-weight: 600; color: var(--text-main);">${escapeHtml(c.namaKategori)}</td>
+        <td style="padding: 6px 10px; text-align: right; font-weight: 700;">${escapeHtml(c.saldoAwal?.rp || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right; color: var(--primary);">${escapeHtml(c.saldoAwal?.qty || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.pembelianMurni || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.pembelianBonus || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.transferIn || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.returPenjualan || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.repackIn || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.penerimaanLain || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right; font-weight: 600; color: var(--warning);">${escapeHtml(c.penjualan || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.transferOut || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.repackOut || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right; color: var(--danger);">${escapeHtml(c.hilang || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.pengeluaranLain || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.so || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.penyesuaian || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right;">${escapeHtml(c.koreksi || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: var(--success);">${escapeHtml(c.saldoAkhir?.rp || '0')}</td>
+        <td style="padding: 6px 10px; text-align: right; color: var(--primary);">${escapeHtml(c.saldoAkhir?.qty || '0')}</td>
+      </tr>
+    `;
+  });
+
+  // Render Grand Total row at the bottom
+  if (cachedRegisterLpp.grandTotal) {
+    const gt = cachedRegisterLpp.grandTotal;
+    html += `
+      <tr style="background: #0b1329; font-weight: 700; border-top: 2px solid var(--primary); box-shadow: 0 -4px 12px rgba(0,0,0,0.6); position: sticky; bottom: 0; z-index: 5;">
+        <td colspan="4" style="padding: 8px 10px; color: var(--primary); background: #0b1329;">TOTAL SELURUHNYA (GRAND TOTAL)</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.saldoAwal?.rp || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; color: var(--primary); background: #0b1329;">${escapeHtml(gt.saldoAwal?.qty || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pembelianMurni || gt.murni || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pembelianBonus || gt.bonus || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.transferIn || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.returPenjualan || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.repackIn || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.penerimaanLain || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; color: var(--warning); background: #0b1329;">${escapeHtml(gt.penjualan || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.transferOut || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.repackOut || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; color: var(--danger); background: #0b1329;">${escapeHtml(gt.hilang || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pengeluaranLain || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.so || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.penyesuaian || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.koreksi || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; color: var(--success); background: #0b1329;">${escapeHtml(gt.saldoAkhir?.rp || '0')}</td>
+        <td style="padding: 8px 10px; text-align: right; color: var(--primary); background: #0b1329;">${escapeHtml(gt.saldoAkhir?.qty || '0')}</td>
+      </tr>
+    `;
+  }
+
+  tbodyLppDetail.innerHTML = html;
+}
+
+// Fetch Live Register LPP from Web IAS
+async function triggerFetchRegisterLpp() {
+  if (!btnFetchRegisterLpp) return;
+  const origText = btnFetchRegisterLpp.innerHTML;
+  btnFetchRegisterLpp.disabled = true;
+  btnFetchRegisterLpp.innerHTML = `<span>⏳</span> Mengambil Register LPP...`;
+  renderTaskBadge(badgeRegisterLppStatus, 'LOADING');
+
+  const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+  const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '01/09/2026';
+
+  addIasLog('info', `📊 Memulai pengambilan laporan Register LPP untuk Periode ${p1} s/d ${p2}...`);
+
+  try {
+    const res = await fetch('/api/ias/register-lpp/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        menu: 'LPP01',
+        export_type: 'pdf',
+        periode1: p1,
+        periode2: p2,
+        tipe: '3'
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      applyLppDataToUi(data);
+      showAlert('success', 'Register LPP Berhasil Diekstrak', `Berhasil mengekstrak ${data.totalCategories} kategori dan Grand Total sebagai data pembanding.`);
+    } else {
+      renderTaskBadge(badgeRegisterLppStatus, 'ERROR');
+      showAlert('error', 'Gagal Mengambil Register LPP', data.error || 'Terjadi kesalahan');
+    }
+  } catch (err) {
+    renderTaskBadge(badgeRegisterLppStatus, 'ERROR');
+    showAlert('error', 'Error Jaringan', err.message);
+  } finally {
+    btnFetchRegisterLpp.disabled = false;
+    btnFetchRegisterLpp.innerHTML = origText;
+  }
+}
+
+// Load Latest Saved Register LPP
+async function loadLatestRegisterLpp() {
+  try {
+    const res = await fetch('/api/ias/register-lpp/latest');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && data.categories) {
+      applyLppDataToUi(data);
+    }
+  } catch (e) {}
+}
+
+// Modal open/close & filter events
+if (btnOpenLppModal) {
+  btnOpenLppModal.addEventListener('click', () => {
+    if (lppModalOverlay) lppModalOverlay.classList.add('active');
+  });
+}
+if (btnCloseLppModal) {
+  btnCloseLppModal.addEventListener('click', () => {
+    if (lppModalOverlay) lppModalOverlay.classList.remove('active');
+  });
+}
+if (btnCloseLppModalBtn) {
+  btnCloseLppModalBtn.addEventListener('click', () => {
+    if (lppModalOverlay) lppModalOverlay.classList.remove('active');
+  });
+}
+if (lppModalOverlay) {
+  lppModalOverlay.addEventListener('click', (e) => {
+    if (e.target === lppModalOverlay) lppModalOverlay.classList.remove('active');
+  });
+}
+if (btnFetchRegisterLpp) {
+  btnFetchRegisterLpp.addEventListener('click', triggerFetchRegisterLpp);
+}
+if (btnCheckRegisterLppLatest) {
+  btnCheckRegisterLppLatest.addEventListener('click', async () => {
+    await loadLatestRegisterLpp();
+    showAlert('info', 'Data Dimuat', 'Data Register LPP terakhir berhasil dimuat ulang.');
+  });
+}
+if (inputFilterLppTable) {
+  inputFilterLppTable.addEventListener('input', renderLppTable);
+}
+if (selectFilterLppDivisi) {
+  selectFilterLppDivisi.addEventListener('change', renderLppTable);
+}
+
 // Initial Load
 initTheme();
 initAdminNav();
 populateDefaultDates();
 loadConfig();
 loadIasConfig();
+loadLatestRegisterLpp();
 
 // Poll Live Logs (Terpisah: CMS StokPoin vs Web IAS)
 setInterval(fetchLogs, 1500);

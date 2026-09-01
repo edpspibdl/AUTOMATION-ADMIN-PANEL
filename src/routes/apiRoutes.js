@@ -204,4 +204,104 @@ router.post('/ias/tasks/lpp/run', async (req, res) => {
   }
 });
 
+// Task 3: Cetak & Ambil Data Register LPP (Data Pembanding)
+router.post('/ias/register-lpp/fetch', async (req, res) => {
+  try {
+    addIasLog('info', `🚀 Memulai pengambilan laporan Register LPP untuk data pembanding...`);
+    const result = await iasService.fetchAndParseRegisterLPP(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Ambil Data Register LPP Terakhir yang Tersimpan
+router.get('/ias/register-lpp/latest', (req, res) => {
+  const data = iasService.getLatestRegisterLPP();
+  if (data) {
+    res.json(data);
+  } else {
+    res.json({ success: false, message: 'Belum ada data Register LPP yang diambil.' });
+  }
+});
+
+// Export Data Register LPP ke format CSV
+router.get('/ias/register-lpp/export-csv', (req, res) => {
+  const data = iasService.getLatestRegisterLPP();
+  if (!data || !data.categories) {
+    return res.status(404).send('Data Register LPP belum tersedia.');
+  }
+
+  const headers = [
+    'DIVISI', 'DEPARTEMEN', 'KODE', 'NAMA KATEGORI',
+    'SALDO AWAL (RP)', 'SALDO AWAL (QTY)',
+    'PEMBELIAN MURNI', 'PEMBELIAN BONUS',
+    'TRANSFER IN', 'RETUR PENJUALAN', 'REPACK IN', 'PENERIMAAN LAIN',
+    'PENJUALAN', 'TRANSFER OUT', 'REPACK OUT', 'HILANG', 'PENGELUARAN LAIN', 'SO',
+    'PENYESUAIAN', 'KOREKSI',
+    'SALDO AKHIR (RP)', 'SALDO AKHIR (QTY)'
+  ];
+
+  const escapeCsv = (val) => {
+    const s = (val === null || val === undefined) ? '' : String(val);
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+
+  const csvRows = [headers.join(',')];
+
+  data.categories.forEach(c => {
+    csvRows.push([
+      escapeCsv(c.divisi),
+      escapeCsv(c.departemen),
+      escapeCsv(c.kode),
+      escapeCsv(c.namaKategori),
+      escapeCsv(c.saldoAwal?.rp || '0'),
+      escapeCsv(c.saldoAwal?.qty || '0'),
+      escapeCsv(c.pembelianMurni),
+      escapeCsv(c.pembelianBonus),
+      escapeCsv(c.transferIn),
+      escapeCsv(c.returPenjualan),
+      escapeCsv(c.repackIn),
+      escapeCsv(c.penerimaanLain),
+      escapeCsv(c.penjualan),
+      escapeCsv(c.transferOut),
+      escapeCsv(c.repackOut),
+      escapeCsv(c.hilang),
+      escapeCsv(c.pengeluaranLain),
+      escapeCsv(c.so),
+      escapeCsv(c.penyesuaian),
+      escapeCsv(c.koreksi),
+      escapeCsv(c.saldoAkhir?.rp || '0'),
+      escapeCsv(c.saldoAkhir?.qty || '0')
+    ].join(','));
+  });
+
+  if (data.grandTotal) {
+    const gt = data.grandTotal;
+    csvRows.push([
+      escapeCsv('TOTAL SELURUHNYA'), '', '', '',
+      escapeCsv(gt.saldoAwal?.rp || '0'), escapeCsv(gt.saldoAwal?.qty || '0'),
+      escapeCsv(gt.pembelianMurni || gt.murni || '0'),
+      escapeCsv(gt.pembelianBonus || gt.bonus || '0'),
+      escapeCsv(gt.transferIn || '0'),
+      escapeCsv(gt.returPenjualan || '0'),
+      escapeCsv(gt.repackIn || '0'),
+      escapeCsv(gt.penerimaanLain || '0'),
+      escapeCsv(gt.penjualan || '0'),
+      escapeCsv(gt.transferOut || '0'),
+      escapeCsv(gt.repackOut || '0'),
+      escapeCsv(gt.hilang || '0'),
+      escapeCsv(gt.pengeluaranLain || '0'),
+      escapeCsv(gt.so || '0'),
+      escapeCsv(gt.penyesuaian || '0'),
+      escapeCsv(gt.koreksi || '0'),
+      escapeCsv(gt.saldoAkhir?.rp || '0'), escapeCsv(gt.saldoAkhir?.qty || '0')
+    ].join(','));
+  }
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="Register_LPP_${data.params?.periode1 || 'data'}.csv"`);
+  res.send(csvRows.join('\n'));
+});
+
 module.exports = router;

@@ -760,6 +760,261 @@ class IasAutomationService {
       }
     }
   }
+
+  getActiveTask() {
+    return this.activeTask;
+  }
+
+  /**
+   * Mengambil file Register LPP terakhir yang tersimpan
+   */
+  getLatestRegisterLPP() {
+    const lppFilePath = path.join(__dirname, '../../data_register_lpp.json');
+    try {
+      if (fs.existsSync(lppFilePath)) {
+        return JSON.parse(fs.readFileSync(lppFilePath, 'utf8'));
+      }
+    } catch (e) {
+      console.error('Error reading data_register_lpp.json:', e);
+    }
+    return null;
+  }
+
+  /**
+   * Mengambil laporan Register LPP dari Web IAS dan mengekstrak seluruh nilai kolom
+   * URL format: /bo/lpp/register-lpp/cetak?menu=LPP01&export_type=pdf&periode1=...&periode2=...&tipe=3
+   */
+  async fetchAndParseRegisterLPP(opts = {}) {
+    if (this.activeTask) {
+      throw new Error(`Tugas lain (${this.activeTask}) sedang berjalan di Web IAS.`);
+    }
+    this.activeTask = 'Register LPP (Data Pembanding)';
+
+    let session = null;
+    try {
+      const config = this.getConfig();
+      const baseUrl = (config.baseUrl || 'http://172.31.146.190').replace(/\/$/, '');
+
+      const menu = opts.menu || 'LPP01';
+      const exportType = opts.export_type || 'pdf';
+      const p1 = opts.periode1 || '01/09/2026';
+      const p2 = opts.periode2 || '01/09/2026';
+      const prdcd1 = opts.prdcd1 || '';
+      const prdcd2 = opts.prdcd2 || '';
+      const dep1 = opts.dep1 || '';
+      const dep2 = opts.dep2 || '';
+      const mtr1 = opts.mtr1 || '';
+      const mtr2 = opts.mtr2 || '';
+      const kat1 = opts.kat1 || '';
+      const kat2 = opts.kat2 || '';
+      const sup1 = opts.sup1 || '';
+      const sup2 = opts.sup2 || '';
+      const tipe = opts.tipe || '3';
+      const banyakitem = opts.banyakitem || '';
+
+      const queryParams = new URLSearchParams({
+        menu,
+        export_type: exportType,
+        periode1: p1,
+        periode2: p2,
+        prdcd1,
+        prdcd2,
+        dep1,
+        dep2,
+        mtr1,
+        mtr2,
+        kat1,
+        kat2,
+        sup1,
+        sup2,
+        tipe,
+        banyakitem
+      });
+
+      const cetakUrl = `${baseUrl}/bo/lpp/register-lpp/cetak?${queryParams.toString()}`;
+
+      addLog('info', `[IAS] [REGISTER LPP] Membuka sesi dan mengambil laporan Register LPP (${menu}, Periode: ${p1} s/d ${p2})...`);
+
+      session = await this.createSession();
+      const page = session.page;
+
+      const response = await page.goto(cetakUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      const html = await response.text();
+
+      addLog('info', `[IAS] [REGISTER LPP] Respons laporan diterima (${Math.round(html.length / 1024)} KB). Mengekstrak kolom data...`);
+
+      // Parsing HTML laporan Register LPP
+      const stripTags = (str) => (str || '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const parseCell = (tdHtml) => {
+        if (!tdHtml) return { rp: '0', qty: '0', raw: '0' };
+        const parts = tdHtml.split(/<br\s*[\/]?>/i).map(s => stripTags(s)).filter(Boolean);
+        return {
+          rp: parts[0] || '0',
+          qty: parts[1] || '0',
+          raw: stripTags(tdHtml)
+        };
+      };
+
+      const trRegex = /<tr[\s\S]*?<\/tr>/gi;
+      const tdRegex = /<td[\s\S]*?<\/td>/gi;
+
+      let currentDivisi = '';
+      let currentDepartemen = '';
+      const categories = [];
+      const summaries = [];
+      let grandTotal = null;
+
+      let match;
+      while ((match = trRegex.exec(html)) !== null) {
+        const trHtml = match[0];
+        const tds = trHtml.match(tdRegex);
+        if (!tds || tds.length === 0) continue;
+
+        const col0 = stripTags(tds[0]);
+        const col1 = tds.length > 1 ? stripTags(tds[1]) : '';
+
+        if (col0.toUpperCase() === 'DIVISI') {
+          currentDivisi = col1;
+          continue;
+        }
+        if (col0.toUpperCase() === 'DEPARTEMEN') {
+          currentDepartemen = col1;
+          continue;
+        }
+
+        // Summary row: SUB TOTAL DEPT, SUB TOTAL DIVISI, TOTAL SELURUHNYA
+        if (col0.toUpperCase().startsWith('SUB TOTAL') || col0.toUpperCase().startsWith('TOTAL')) {
+          const isGrandTotal = col0.toUpperCase().startsWith('TOTAL SELURUHNYA');
+          const isDivisi = col0.toUpperCase().includes('DIVISI');
+
+          const summaryItem = {
+            type: isGrandTotal ? 'GRAND_TOTAL' : (isDivisi ? 'SUBTOTAL_DIVISI' : 'SUBTOTAL_DEPT'),
+            label: col0,
+            divisi: currentDivisi,
+            departemen: currentDepartemen,
+            saldoAwal: parseCell(tds[1]),
+            pembelianMurni: stripTags(tds[2]),
+            pembelianBonus: stripTags(tds[3]),
+            transferIn: stripTags(tds[4]),
+            returPenjualan: stripTags(tds[5]),
+            repackIn: stripTags(tds[6]),
+            penerimaanLain: stripTags(tds[7]),
+            penjualan: stripTags(tds[8]),
+            transferOut: stripTags(tds[9]),
+            repackOut: stripTags(tds[10]),
+            hilang: stripTags(tds[11]),
+            pengeluaranLain: stripTags(tds[12]),
+            so: stripTags(tds[13]),
+            penyesuaian: stripTags(tds[14]),
+            koreksi: stripTags(tds[15]),
+            saldoAkhir: parseCell(tds[16] || tds[17])
+          };
+
+          if (isGrandTotal) {
+            grandTotal = summaryItem;
+          } else {
+            summaries.push(summaryItem);
+          }
+          continue;
+        }
+
+        // Category data row (17 or 18 columns)
+        if (tds.length >= 17) {
+          const rowItem = {
+            divisi: currentDivisi,
+            departemen: currentDepartemen,
+            kode: col0,
+            namaKategori: col1,
+            saldoAwal: parseCell(tds[2]),
+            pembelianMurni: stripTags(tds[3]),
+            pembelianBonus: stripTags(tds[4]),
+            transferIn: stripTags(tds[5]),
+            returPenjualan: stripTags(tds[6]),
+            repackIn: stripTags(tds[7]),
+            penerimaanLain: stripTags(tds[8]),
+            penjualan: stripTags(tds[9]),
+            transferOut: stripTags(tds[10]),
+            repackOut: stripTags(tds[11]),
+            hilang: stripTags(tds[12]),
+            pengeluaranLain: stripTags(tds[13]),
+            so: stripTags(tds[14]),
+            penyesuaian: stripTags(tds[15]),
+            koreksi: stripTags(tds[16]),
+            saldoAkhir: parseCell(tds[17] || tds[16])
+          };
+
+          categories.push(rowItem);
+        }
+      }
+
+      // Metadata dari header teks laporan
+      const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
+      const titleText = titleMatch ? stripTags(titleMatch[1]) : 'POSISI & MUTASI PERSEDIAAN BARANG BAIK';
+
+      const resultPayload = {
+        success: true,
+        time: new Date().toLocaleString('id-ID'),
+        timestamp: Date.now(),
+        params: {
+          menu,
+          exportType,
+          periode1: p1,
+          periode2: p2,
+          tipe
+        },
+        metadata: {
+          title: titleText,
+          periode: `${p1} s/d ${p2}`
+        },
+        grandTotal,
+        totalCategories: categories.length,
+        totalSummaries: summaries.length,
+        categories,
+        summaries
+      };
+
+      // Simpan ke file data_register_lpp.json
+      const savePath = path.join(__dirname, '../../data_register_lpp.json');
+      fs.writeFileSync(savePath, JSON.stringify(resultPayload, null, 2));
+
+      // Update config.json dengan summary eksekusi
+      if (fs.existsSync(this.configFile)) {
+        const raw = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+        raw.lastRegisterLppRun = {
+          time: resultPayload.time,
+          periode: `${p1} s/d ${p2}`,
+          menu,
+          totalCategories: categories.length,
+          saldoAwalRp: grandTotal?.saldoAwal?.rp || '0',
+          saldoAwalQty: grandTotal?.saldoAwal?.qty || '0',
+          penjualan: grandTotal?.penjualan || '0',
+          saldoAkhirRp: grandTotal?.saldoAkhir?.rp || '0',
+          saldoAkhirQty: grandTotal?.saldoAkhir?.qty || '0'
+        };
+        fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
+      }
+
+      addLog('success', `[IAS] ✅ [REGISTER LPP] Sukses mengekstrak ${categories.length} kategori, ${summaries.length} subtotal, dan Grand Total (Saldo Awal: Rp ${grandTotal?.saldoAwal?.rp || 0}, Saldo Akhir: Rp ${grandTotal?.saldoAkhir?.rp || 0})!`);
+
+      return resultPayload;
+
+    } catch (err) {
+      addLog('error', `[IAS] ❌ [REGISTER LPP] Gagal: ${err.message}`);
+      throw err;
+    } finally {
+      this.activeTask = null;
+      if (session && session.browser) {
+        await session.browser.close();
+      }
+    }
+  }
 }
 
 module.exports = new IasAutomationService();
+
