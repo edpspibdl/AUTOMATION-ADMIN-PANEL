@@ -143,4 +143,36 @@ router.post('/ias/test-login', async (req, res) => {
   }
 });
 
+// Ambil Status Live Tasks IAS (Hitstok & LPP)
+router.get('/ias/tasks/status', async (req, res) => {
+  try {
+    const status = await iasService.getTasksLiveStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Jalankan Task 1: Hitung Ulang Stock
+router.post('/ias/tasks/hitstok/run', async (req, res) => {
+  try {
+    addLog('info', `🚀 Memulai pemicuan Task: Hitung Ulang Stock...`);
+    const result = await iasService.runHitungUlangStock(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Jalankan Task 2: Proses LPP
+router.post('/ias/tasks/lpp/run', async (req, res) => {
+  try {
+    addLog('info', `🚀 Memulai pemicuan Task: Proses LPP (${req.body.mode === 'harian' ? 'Harian' : 'Bulanan'})...`);
+    const result = await iasService.runProsesLPP(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

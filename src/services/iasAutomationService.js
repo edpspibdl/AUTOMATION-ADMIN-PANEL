@@ -7,6 +7,7 @@ class IasAutomationService {
   constructor() {
     this.configFile = path.join(__dirname, '../../config.json');
     this.routesFile = path.join(__dirname, '../../ias_all_routes.json');
+    this.activeTask = null; // tracking running task
   }
 
   getConfig() {
@@ -61,15 +62,14 @@ class IasAutomationService {
   }
 
   /**
-   * Perform automated login to Web IAS
-   * Handles user session lock with automatic RST reset
+   * Helper to create an authenticated browser session
    */
-  async login(customConfig = null) {
+  async createSession(customConfig = null) {
     const config = customConfig || this.getConfig();
-    const baseUrl = config.baseUrl || 'http://172.31.146.190';
-    const loginUrl = `${baseUrl.replace(/\/$/, '')}/login`;
+    const baseUrl = (config.baseUrl || 'http://172.31.146.190').replace(/\/$/, '');
+    const loginUrl = `${baseUrl}/login`;
 
-    addLog('info', `[IAS] Memulai proses login ke ${loginUrl} (User: ${config.username}, Koneksi: ${(config.koneksi || '').toUpperCase()})...`);
+    addLog('info', `[IAS] Membuka browser headless dan mengakses ${loginUrl}...`);
 
     const browser = await chromium.launch({
       headless: true,
@@ -82,7 +82,7 @@ class IasAutomationService {
     try {
       await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-      // Step 1: Fill credentials
+      // Step 1: Login form
       await page.selectOption('#koneksi', config.koneksi || 'sim');
       await page.fill('#username', config.username || 'RIS');
       await page.fill('#password', config.password || ('0' + '61201'));
@@ -90,16 +90,15 @@ class IasAutomationService {
 
       await page.waitForTimeout(2000);
 
-      // Check for SweetAlert popup
+      // Handle SweetAlert popup (session active / RST reset)
       const swalBtn = await page.$('.swal2-confirm, .swal-button');
       if (swalBtn) {
         const swalText = await page.innerText('.swal2-html-container, .swal-text').catch(() => '');
-        addLog('info', `[IAS] Popup respon: "${swalText.replace(/\n|\r/g, ' ')}"`);
+        addLog('info', `[IAS] Respon login awal: "${swalText.replace(/\n|\r/g, ' ')}"`);
         await swalBtn.click();
 
-        // If user is locked and needs RESET
         if (swalText.includes('RESET') && config.autoResetSession) {
-          addLog('info', `[IAS] Sesi aktif terdeteksi. Menjalankan auto-reset session dengan USER: RST...`);
+          addLog('info', `[IAS] Sesi aktif terdeteksi. Mereset sesi otomatis dengan USER: RST...`);
           await page.waitForTimeout(1000);
 
           await page.selectOption('#koneksi', config.koneksi || 'sim');
@@ -111,7 +110,7 @@ class IasAutomationService {
           const rstSwalBtn = await page.$('.swal2-confirm, .swal-button');
           if (rstSwalBtn) {
             const rstText = await page.innerText('.swal2-html-container, .swal-text').catch(() => '');
-            addLog('info', `[IAS] Respon reset: "${rstText.replace(/\n|\r/g, ' ')}"`);
+            addLog('info', `[IAS] Respon reset sesi: "${rstText.replace(/\n|\r/g, ' ')}"`);
             await rstSwalBtn.click();
           }
 
@@ -122,17 +121,14 @@ class IasAutomationService {
           await page.fill('#password', config.password);
           await page.click('#btn-login');
 
-          // Wait and click "Login Sukses!" confirm button
           const finalSwal = page.locator('.swal2-confirm, .swal-button');
           await finalSwal.waitFor({ state: 'visible', timeout: 10000 });
-          addLog('info', `[IAS] Mengonfirmasi popup sukses login...`);
+          addLog('info', `[IAS] Mengonfirmasi SweetAlert sukses login...`);
           await finalSwal.click();
 
-          // Wait for redirect to dashboard
           await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 15000 }).catch(() => {});
         }
       } else {
-        // If no reset needed but initial login popup appeared
         const finalSwal = page.locator('.swal2-confirm, .swal-button');
         if (await finalSwal.isVisible()) {
           await finalSwal.click();
@@ -140,34 +136,420 @@ class IasAutomationService {
         }
       }
 
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(2500);
       const currentUrl = page.url();
-      const title = await page.title();
-      const cookies = await context.cookies();
-
-      const isLoggedIn = currentUrl !== loginUrl && !currentUrl.includes('/login');
-
-      if (isLoggedIn) {
-        addLog('success', `[IAS] ✅ Login Web IAS Berhasil! URL: ${currentUrl} (Title: "${title}")`);
-        return {
-          success: true,
-          url: currentUrl,
-          title: title,
-          cookies: cookies,
-          message: `Berhasil terhubung dan login ke Web IAS (${(config.koneksi || '').toUpperCase()} - ${config.username})`
-        };
-      } else {
-        throw new Error(`Login gagal, halaman tetap berada di ${currentUrl}`);
+      if (currentUrl.includes('/login')) {
+        throw new Error(`Gagal login ke IAS, halaman tetap berada di ${currentUrl}`);
       }
 
+      addLog('success', `[IAS] Berhasil terautentikasi di Web IAS (${(config.koneksi || '').toUpperCase()} - ${config.username})`);
+      return { browser, context, page, baseUrl, config };
+
     } catch (err) {
-      addLog('error', `[IAS] ❌ Terjadi kesalahan login Web IAS: ${err.message}`);
+      await browser.close();
+      throw err;
+    }
+  }
+
+  /**
+   * Test login to Web IAS
+   */
+  async login(customConfig = null) {
+    let session = null;
+    try {
+      session = await this.createSession(customConfig);
+      const currentUrl = session.page.url();
+      const title = await session.page.title();
+      const cookies = await session.context.cookies();
+
+      return {
+        success: true,
+        url: currentUrl,
+        title: title,
+        cookies: cookies,
+        message: `Berhasil terhubung dan login ke Web IAS (${(session.config.koneksi || '').toUpperCase()} - ${session.config.username})`
+      };
+    } catch (err) {
+      addLog('error', `[IAS] ❌ Uji login gagal: ${err.message}`);
       return {
         success: false,
         error: err.message
       };
     } finally {
-      await browser.close();
+      if (session && session.browser) {
+        await session.browser.close();
+      }
+    }
+  }
+
+  /**
+   * Check current live status for both Hitstok and LPP
+   */
+  async getTasksLiveStatus(customConfig = null) {
+    let session = null;
+    try {
+      session = await this.createSession(customConfig);
+      const { page, baseUrl } = session;
+
+      // 1. Check Hitstok
+      addLog('info', `[IAS] Mengambil status live Hitung Ulang Stock...`);
+      await page.goto(`${baseUrl}/bo/proses/hitungulangstock`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForTimeout(1500);
+
+      const hitstokStatus = await page.evaluate(async () => {
+        const p1 = $('#periode1').val();
+        const p2 = $('#periode2').val();
+        return new Promise((resolve) => {
+          $.ajax({
+            url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
+            type: 'get',
+            data: { periode1: p1, periode2: p2 },
+            success: (res) => resolve({ periode1: p1, periode2: p2, ...res }),
+            error: (err) => resolve({ periode1: p1, periode2: p2, status: 'ERROR', message: err.statusText })
+          });
+        });
+      });
+
+      // 2. Check LPP
+      addLog('info', `[IAS] Mengambil status live Proses LPP...`);
+      await page.goto(`${baseUrl}/bo/lpp/proses-lpp`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForTimeout(1500);
+
+      const lppStatus = await page.evaluate(async () => {
+        const p1 = $('#periode1').val();
+        const p2 = $('#periode2').val();
+        return new Promise((resolve) => {
+          $.ajax({
+            url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
+            type: 'get',
+            data: { periode1: p1, periode2: p2 },
+            success: (res) => resolve({ periode1: p1, periode2: p2, ...res }),
+            error: (err) => resolve({ periode1: p1, periode2: p2, status: 'ERROR', message: err.statusText })
+          });
+        });
+      });
+
+      // Read last run info from config.json
+      let lastHitstokRun = null;
+      let lastLppRun = null;
+      if (fs.existsSync(this.configFile)) {
+        const cfg = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+        lastHitstokRun = cfg.lastHitstokRun || null;
+        lastLppRun = cfg.lastLppRun || null;
+      }
+
+      addLog('success', `[IAS] ✅ Berhasil memperbarui status Hitstok dan LPP.`);
+      return {
+        success: true,
+        hitstok: hitstokStatus,
+        lpp: lppStatus,
+        lastHitstokRun,
+        lastLppRun
+      };
+
+    } catch (err) {
+      addLog('error', `[IAS] Gagal mengambil status tasks: ${err.message}`);
+      return {
+        success: false,
+        error: err.message
+      };
+    } finally {
+      if (session && session.browser) {
+        await session.browser.close();
+      }
+    }
+  }
+
+  /**
+   * TASK 1: Run Hitung Ulang Stock
+   * @param {Object} opts { periode1, periode2, plu1, plu2, updateOnlineStock }
+   */
+  async runHitungUlangStock(opts = {}) {
+    if (this.activeTask) {
+      throw new Error(`Saat ini sedang berjalan tugas: ${this.activeTask}. Mohon tunggu hingga selesai.`);
+    }
+
+    this.activeTask = 'HITSTOK';
+    let session = null;
+
+    try {
+      session = await this.createSession();
+      const { page, baseUrl } = session;
+
+      addLog('info', `[IAS] [TASK HITSTOK] Membuka halaman Hitung Ulang Stock...`);
+      await page.goto(`${baseUrl}/bo/proses/hitungulangstock`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(2000);
+
+      // Read or fill parameters
+      let p1 = opts.periode1;
+      let p2 = opts.periode2;
+      if (!p1) p1 = await page.$eval('#periode1', el => el.value);
+      if (!p2) p2 = await page.$eval('#periode2', el => el.value);
+
+      if (opts.periode1) await page.fill('#periode1', opts.periode1);
+      if (opts.periode2) await page.fill('#periode2', opts.periode2);
+
+      let plu1 = (opts.plu1 || '').trim();
+      let plu2 = (opts.plu2 || '').trim();
+      if (plu1) {
+        plu1 = plu1.padStart(7, '0');
+        await page.fill('#plu1', plu1);
+      }
+      if (plu2) {
+        plu2 = plu2.padStart(7, '0');
+        await page.fill('#plu2', plu2);
+      }
+
+      addLog('info', `[IAS] [TASK HITSTOK] Menjalankan proses hitung stok untuk Periode ${p1} s/d ${p2} (PLU: ${plu1 || 'SEMUA PLU'})...`);
+
+      // Trigger POST hitung-ulang-stock
+      const triggerResult = await page.evaluate(async ({ p1, p2, plu1, plu2 }) => {
+        return new Promise((resolve) => {
+          $.ajax({
+            url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock',
+            type: 'post',
+            data: {
+              periode1: p1,
+              periode2: p2,
+              plu1: plu1,
+              plu2: plu2
+            },
+            success: (res) => resolve({ ok: true, res }),
+            error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
+            timeout: 30000
+          });
+        });
+      }, { p1, p2, plu1, plu2 });
+
+      addLog('info', `[IAS] [TASK HITSTOK] Respon pemicu hitung stok: ${JSON.stringify(triggerResult.res || triggerResult.error)}`);
+
+      // Polling status until DONE (max 90 seconds)
+      addLog('info', `[IAS] [TASK HITSTOK] Memantau proses hitung stok hingga berstatus DONE...`);
+      let isDone = false;
+      let checkAttempts = 0;
+      let lastData = null;
+
+      while (!isDone && checkAttempts < 30) {
+        checkAttempts++;
+        await page.waitForTimeout(3000);
+
+        const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+          return new Promise((resolve) => {
+            $.ajax({
+              url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
+              type: 'get',
+              data: { periode1: p1, periode2: p2 },
+              success: (res) => resolve(res),
+              error: () => resolve(null)
+            });
+          });
+        }, { p1, p2 });
+
+        if (pollRes && Array.isArray(pollRes.data)) {
+          lastData = pollRes.data;
+          const statuses = pollRes.data.map(d => `${d.submenu}: ${d.status}`);
+          addLog('info', `[IAS] [TASK HITSTOK] Status check #${checkAttempts}: ${statuses.join(' | ')}`);
+
+          const allDone = pollRes.data.every(d => d.status === 'DONE');
+          if (allDone) {
+            isDone = true;
+            break;
+          }
+        }
+      }
+
+      // Optional: UPDATE ONLINE STOCK SPI
+      let onlineStockResult = null;
+      if (opts.updateOnlineStock) {
+        addLog('info', `[IAS] [TASK HITSTOK] Memicu UPDATE ONLINE STOCK SPI...`);
+        onlineStockResult = await page.evaluate(async () => {
+          return new Promise((resolve) => {
+            $.ajax({
+              url: 'http://172.31.146.190/bo/proses/hitungulangstock/update-online-stock-spi',
+              type: 'post',
+              success: (res) => resolve(res),
+              error: (err) => resolve({ error: err.statusText })
+            });
+          });
+        });
+        addLog('info', `[IAS] [TASK HITSTOK] Respon Update Online Stock SPI: ${JSON.stringify(onlineStockResult)}`);
+      }
+
+      // Save execution info
+      const nowStr = new Date().toLocaleString('id-ID');
+      const execRecord = {
+        time: nowStr,
+        status: isDone ? 'DONE' : 'TIMEOUT_WAITING',
+        periode: `${p1} s/d ${p2}`,
+        pluRange: plu1 ? `${plu1} s/d ${plu2 || plu1}` : 'SEMUA',
+        onlineStockUpdated: !!opts.updateOnlineStock,
+        details: lastData
+      };
+
+      if (fs.existsSync(this.configFile)) {
+        const raw = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+        raw.lastHitstokRun = execRecord;
+        fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
+      }
+
+      addLog('success', `[IAS] ✅ [TASK HITSTOK] Selesai dengan status: ${execRecord.status}!`);
+      return {
+        success: true,
+        ...execRecord
+      };
+
+    } catch (err) {
+      addLog('error', `[IAS] ❌ [TASK HITSTOK] Gagal: ${err.message}`);
+      throw err;
+    } finally {
+      this.activeTask = null;
+      if (session && session.browser) {
+        await session.browser.close();
+      }
+    }
+  }
+
+  /**
+   * TASK 2: Run Proses LPP (Bulanan atau Harian)
+   * @param {Object} opts { mode: 'bulanan' | 'harian', periode1, periode2, tanggalSo, khususAudit }
+   */
+  async runProsesLPP(opts = {}) {
+    if (this.activeTask) {
+      throw new Error(`Saat ini sedang berjalan tugas: ${this.activeTask}. Mohon tunggu hingga selesai.`);
+    }
+
+    this.activeTask = 'PROSES_LPP';
+    let session = null;
+
+    try {
+      session = await this.createSession();
+      const { page, baseUrl } = session;
+
+      const isHarian = opts.mode === 'harian';
+      const targetUrl = isHarian 
+        ? `${baseUrl}/bo/lpp/proses-lpp-harian` 
+        : `${baseUrl}/bo/lpp/proses-lpp`;
+
+      addLog('info', `[IAS] [TASK LPP] Membuka halaman ${isHarian ? 'Proses LPP Harian' : 'Proses LPP'} (${targetUrl})...`);
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForTimeout(2000);
+
+      // Read or fill parameters
+      let p1 = opts.periode1;
+      let p2 = opts.periode2;
+      if (!p1) p1 = await page.$eval('#periode1', el => el.value);
+      if (!p2) p2 = await page.$eval('#periode2', el => el.value);
+
+      if (opts.periode1) await page.fill('#periode1', opts.periode1);
+      if (opts.periode2) await page.fill('#periode2', opts.periode2);
+
+      let tanggalSo = opts.tanggalSo;
+      if (isHarian) {
+        if (!tanggalSo) tanggalSo = await page.$eval('#tanggal-so', el => el.value);
+        if (opts.tanggalSo) await page.fill('#tanggal-so', opts.tanggalSo);
+        if (opts.khususAudit) {
+          await page.check('#audit');
+        }
+      }
+
+      addLog('info', `[IAS] [TASK LPP] Menjalankan ${isHarian ? 'LPP Harian' : 'LPP Bulanan'} untuk Periode ${p1} s/d ${p2}...`);
+
+      let lastStatusData = null;
+      let isDone = false;
+
+      if (!isHarian) {
+        // Trigger POST proses LPP Bulanan
+        const triggerResult = await page.evaluate(async ({ p1, p2 }) => {
+          return new Promise((resolve) => {
+            $.ajax({
+              url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses',
+              type: 'post',
+              data: { periode1: p1, periode2: p2 },
+              success: (res) => resolve({ ok: true, res }),
+              error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
+              timeout: 30000
+            });
+          });
+        }, { p1, p2 });
+
+        addLog('info', `[IAS] [TASK LPP] Respon pemicu LPP: ${JSON.stringify(triggerResult.res || triggerResult.error)}`);
+
+        // Polling status until DONE (max 90 seconds)
+        addLog('info', `[IAS] [TASK LPP] Memantau status proses LPP hingga selesai...`);
+        let checkAttempts = 0;
+
+        while (!isDone && checkAttempts < 30) {
+          checkAttempts++;
+          await page.waitForTimeout(3000);
+
+          const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+            return new Promise((resolve) => {
+              $.ajax({
+                url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
+                type: 'get',
+                data: { periode1: p1, periode2: p2 },
+                success: (res) => resolve(res),
+                error: () => resolve(null)
+              });
+            });
+          }, { p1, p2 });
+
+          if (pollRes && pollRes.data) {
+            lastStatusData = pollRes.data;
+            addLog('info', `[IAS] [TASK LPP] Status check #${checkAttempts}: ${pollRes.data.status} (Start: ${pollRes.data.start_time || '-'}, Finish: ${pollRes.data.end_time || '-'})`);
+            if (pollRes.data.status === 'DONE') {
+              isDone = true;
+              break;
+            }
+          }
+        }
+      } else {
+        // LPP Harian: Click button PROSES LAPORAN
+        addLog('info', `[IAS] [TASK LPP HARIAN] Mengklik tombol PROSES LAPORAN...`);
+        await page.click('#btn-proses');
+        await page.waitForTimeout(5000);
+
+        // Check for any swal alert
+        const swal = await page.$('.swal2-html-container, .swal-text');
+        const alertMsg = swal ? await swal.innerText() : 'Proses laporan LPP Harian dikirim.';
+        addLog('info', `[IAS] [TASK LPP HARIAN] Notifikasi: ${alertMsg.replace(/\n|\r/g, ' ')}`);
+        isDone = true;
+        lastStatusData = { status: 'DONE', message: alertMsg };
+      }
+
+      // Save execution info
+      const nowStr = new Date().toLocaleString('id-ID');
+      const execRecord = {
+        time: nowStr,
+        mode: isHarian ? 'Harian' : 'Bulanan',
+        status: isDone ? 'DONE' : 'TIMEOUT_WAITING',
+        periode: `${p1} s/d ${p2}`,
+        tanggalSo: tanggalSo || '-',
+        startTime: lastStatusData?.start_time || '-',
+        endTime: lastStatusData?.end_time || '-',
+        details: lastStatusData
+      };
+
+      if (fs.existsSync(this.configFile)) {
+        const raw = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+        raw.lastLppRun = execRecord;
+        fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
+      }
+
+      addLog('success', `[IAS] ✅ [TASK LPP] Selesai dengan status: ${execRecord.status}!`);
+      return {
+        success: true,
+        ...execRecord
+      };
+
+    } catch (err) {
+      addLog('error', `[IAS] ❌ [TASK LPP] Gagal: ${err.message}`);
+      throw err;
+    } finally {
+      this.activeTask = null;
+      if (session && session.browser) {
+        await session.browser.close();
+      }
     }
   }
 }

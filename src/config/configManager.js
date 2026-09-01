@@ -21,6 +21,8 @@ const DEFAULT_CONFIG = {
   },
   lastRun: null,
   lastMarminRun: null,
+  lastHitstokRun: null,
+  lastLppRun: null,
   iasConfig: {
     baseUrl: 'http://172.31.146.190',
     koneksi: 'sim',
@@ -48,6 +50,8 @@ function loadConfig() {
         dbConfig: cfg.dbConfig || DEFAULT_CONFIG.dbConfig,
         lastRun: cfg.lastRun || null,
         lastMarminRun: cfg.lastMarminRun || null,
+        lastHitstokRun: cfg.lastHitstokRun || null,
+        lastLppRun: cfg.lastLppRun || null,
         iasConfig: cfg.iasConfig || DEFAULT_CONFIG.iasConfig
       };
     }

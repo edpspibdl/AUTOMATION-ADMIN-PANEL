@@ -342,64 +342,148 @@
             <div class="metric-info">
               <span class="metric-label">Status Modul IAS</span>
               <h3 class="metric-value" style="color: var(--success);">SIAP DIGUNAKAN</h3>
-              <span class="metric-detail">Modul Otomasi Baru Aktif</span>
+              <span class="metric-detail">SIMULASI (simspibdl1r - 1R)</span>
             </div>
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">⚡</div>
+            <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">📦</div>
             <div class="metric-info">
-              <span class="metric-label">Mode Otomasi</span>
-              <h3 class="metric-value">ON-DEMAND</h3>
-              <span class="metric-detail">Eksekusi Langsung & Terjadwal</span>
+              <span class="metric-label">Status Hitstok</span>
+              <h3 class="metric-value" id="cardHitstokStatus">STANDBY</h3>
+              <span class="metric-detail" id="cardHitstokDetail">Hitung Ulang Stock IAS</span>
             </div>
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🌐</div>
+            <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">📑</div>
             <div class="metric-info">
-              <span class="metric-label">Target Portal Web</span>
-              <h3 class="metric-value">WEB IAS</h3>
-              <span class="metric-detail">Indogrosir IAS System</span>
+              <span class="metric-label">Status Proses LPP</span>
+              <h3 class="metric-value" id="cardLppStatus">STANDBY</h3>
+              <span class="metric-detail" id="cardLppDetail">Proses LPP Bulanan & Harian</span>
             </div>
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">🕒</div>
+            <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">🔄</div>
             <div class="metric-info">
-              <span class="metric-label">Riwayat Eksekusi</span>
-              <h3 class="metric-value" id="cardIasLastRun">-</h3>
-              <span class="metric-detail">Belum ada riwayat tugas IAS</span>
+              <span class="metric-label">Pembaruan Status</span>
+              <button class="btn btn-xs btn-primary mt-1" id="btnRefreshAllIasStatus">
+                <span>🔄</span> Cek Status Semua Task
+              </button>
+              <span class="metric-detail mt-1" id="cardIasLastRefresh">Klik untuk sinkron status</span>
             </div>
           </div>
         </div>
 
         <!-- Main Workspace (2 Columns) for IAS -->
         <div class="workspace-grid">
-          <!-- Left Column: IAS Automation Configuration -->
+          <!-- Left Column: Task 1 (Hitstok) & Connection Config -->
           <div class="column-left">
-            <div class="glass-card">
+            
+            <!-- Card 1: Task 1: PROSES HITSTOK (Hitung Ulang Stock) -->
+            <div class="glass-card task-card">
               <div class="card-header">
                 <div class="card-title-group">
-                  <span class="card-icon">🏢</span>
-                  <h2>Konfigurasi Otomasi Web IAS</h2>
+                  <span class="card-icon">📦</span>
+                  <h2>Task 1: Proses Hitstok (Hitung Ulang Stock)</h2>
                 </div>
-                <span class="badge badge-info">Modul Baru</span>
+                <span class="task-badge-live task-badge-done" id="badgeHitstokStatus">
+                  <span>●</span> DONE
+                </span>
               </div>
               <div class="card-body">
                 <p class="section-desc">
-                  Workspace khusus otomasi Web IAS. Anda dapat menambahkan tugas otomatisasi seperti download laporan, sinkronisasi data, atau verifikasi status transaksi.
+                  Otomasi eksekusi <strong>Hitung Ulang Stock</strong> (endpoint: <code>/bo/proses/hitungulangstock</code>). Mendukung filter range PLU spesifik dan update online stock.
                 </p>
 
                 <div class="form-row mt-2">
                   <div class="form-group flex-1">
+                    <label for="hitstokPeriode1">Periode Awal</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">📅</span>
+                      <input type="text" id="hitstokPeriode1" class="custom-input" placeholder="DD/MM/YYYY">
+                    </div>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="hitstokPeriode2">Periode Akhir (s/d)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">📅</span>
+                      <input type="text" id="hitstokPeriode2" class="custom-input" placeholder="DD/MM/YYYY">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="hitstokPlu1">PLU Awal (Opsional)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🏷️</span>
+                      <input type="text" id="hitstokPlu1" class="custom-input" placeholder="Kosongkan jika semua PLU">
+                    </div>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="hitstokPlu2">PLU Akhir (s/d Opsional)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🏷️</span>
+                      <input type="text" id="hitstokPlu2" class="custom-input" placeholder="Kosongkan jika semua PLU">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="setting-toggle-row mt-2" style="padding: 8px 12px; background: var(--bg-card-header); border-radius: 8px; border: 1px solid var(--border-color);">
+                  <div class="toggle-text">
+                    <span class="toggle-title" style="font-size: 11px;">Update Online Stock SPI</span>
+                    <span class="toggle-desc" style="font-size: 9.5px;">Jalankan update online stock setelah proses hitung stok selesai</span>
+                  </div>
+                  <input type="checkbox" id="checkHitstokOnlineStock" class="custom-toggle" checked>
+                </div>
+
+                <!-- Info Eksekusi Terakhir Hitstok -->
+                <div class="task-summary-box mt-2">
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Terakhir Dijalankan:</span>
+                    <span class="task-summary-val" id="hitstokLastRunTime">-</span>
+                  </div>
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Status Terakhir:</span>
+                    <span class="task-summary-val" id="hitstokLastStatus" style="color: var(--success);">-</span>
+                  </div>
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Filter PLU:</span>
+                    <span class="task-summary-val" id="hitstokLastPluRange">SEMUA PLU</span>
+                  </div>
+                </div>
+
+                <div class="action-buttons-row mt-3">
+                  <button class="btn btn-primary btn-sm" id="btnRunHitstok">
+                    <span>⚡</span> Jalankan Hitstok Sekarang
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="btnCheckHitstokStatus">
+                    <span>🔄</span> Cek Status
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card: Konfigurasi Akses Portal Web IAS -->
+            <div class="glass-card mt-3">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">⚙️</span>
+                  <h2>Konfigurasi Akses Portal Web IAS</h2>
+                </div>
+                <span class="badge badge-info">SIMULASI</span>
+              </div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="form-group flex-1">
                     <label for="inputIasUrl">URL Portal Web IAS</label>
                     <div class="input-with-icon">
                       <span class="field-icon">🔗</span>
-                      <input type="text" id="inputIasUrl" value="http://172.31.146.190" class="custom-input" placeholder="http://172.31.146.190">
+                      <input type="text" id="inputIasUrl" value="http://172.31.146.190" class="custom-input">
                     </div>
                   </div>
-
                   <div class="form-group flex-1">
                     <label for="selectIasKoneksi">Koneksi Database IAS</label>
                     <div class="input-with-icon">
@@ -417,113 +501,166 @@
                     <label for="inputIasUser">Username IAS</label>
                     <div class="input-with-icon">
                       <span class="field-icon">👤</span>
-                      <input type="text" id="inputIasUser" value="RIS" class="custom-input" placeholder="Username login IAS">
+                      <input type="text" id="inputIasUser" value="RIS" class="custom-input">
                     </div>
                   </div>
-
                   <div class="form-group flex-1">
                     <label for="inputIasPassword">Password IAS</label>
                     <div class="input-with-icon">
                       <span class="field-icon">🔑</span>
-                      <input type="password" id="inputIasPassword" value="061201" class="custom-input" placeholder="Password login IAS">
+                      <input type="password" id="inputIasPassword" value="061201" class="custom-input">
                     </div>
                   </div>
                 </div>
 
-                <div class="form-row mt-2">
-                  <div class="form-group flex-1">
-                    <label for="selectIasAction">Target Menu / Fitur IAS</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">⚡</span>
-                      <select id="selectIasAction" class="custom-input">
-                        <option value="/bo/lpp/lpp-minus">1. BO - LPP Minus</option>
-                        <option value="/bo/lpp/proses-lpp-harian">2. BO - Proses LPP Harian</option>
-                        <option value="/bo/laporan/sales-dan-stock">3. BO - Laporan Sales & Stock</option>
-                        <option value="/inquery/prod-supp">4. BO - Inquiry Produk Per Supplier</option>
-                        <option value="/bo/pb/cetak-pb">5. BO - Cetak Permintaan Barang (PB)</option>
-                        <option value="/master/barang">6. Master - Master Barang</option>
-                        <option value="/master/mstaktifallhrgjual">7. Master - Aktifkan Harga Jual All Item</option>
-                        <option value="/master/mstaktifhrgjual">8. Master - Aktifkan Harga Jual Per Item</option>
-                        <option value="/bo/laporan/daftar-pembelian">9. BO - Laporan Daftar Pembelian</option>
-                        <option value="custom">10. Custom Menu / Modul Lain</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div class="form-group flex-1">
-                    <label for="inputIasBranch">Kode Cabang & ID</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">📍</span>
-                      <input type="text" id="inputIasBranch" value="1R (spibdl1r)" class="custom-input" readonly>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="action-buttons-row mt-3">
-                  <button class="btn btn-primary btn-sm" id="btnSaveIasConfig">
-                    <span>💾</span> Simpan Pengaturan IAS
+                <div class="action-buttons-row mt-2">
+                  <button class="btn btn-outline btn-sm" id="btnSaveIasConfig">
+                    <span>💾</span> Simpan Pengaturan
                   </button>
                   <button class="btn btn-outline btn-sm" id="btnTestIasLogin">
                     <span>🧪</span> Uji Login & Koneksi IAS
                   </button>
-                  <button class="btn btn-success btn-sm" id="btnRunIasNow">
-                    <span>🚀</span> Jalankan Otomasi IAS
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right Column: Task 2 (Proses LPP) & Riwayat Antrian -->
+          <div class="column-right">
+            
+            <!-- Card 2: Task 2: PROSES LPP (Bulanan & Harian) -->
+            <div class="glass-card task-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">📑</span>
+                  <h2>Task 2: Proses LPP (Bulanan & Harian)</h2>
+                </div>
+                <span class="task-badge-live task-badge-done" id="badgeLppStatus">
+                  <span>●</span> DONE
+                </span>
+              </div>
+              <div class="card-body">
+                <p class="section-desc">
+                  Otomasi eksekusi <strong>Proses LPP</strong>. Pilih mode antara LPP Bulanan (<code>/bo/lpp/proses-lpp</code>) atau LPP Harian (<code>/bo/lpp/proses-lpp-harian</code>).
+                </p>
+
+                <!-- Mode Switcher Tabs -->
+                <div class="mode-tabs-container mt-2">
+                  <button type="button" class="mode-tab-btn active" id="tabLppBulanan" data-mode="bulanan">
+                    <span>📅</span> Proses LPP (Bulanan)
+                  </button>
+                  <button type="button" class="mode-tab-btn" id="tabLppHarian" data-mode="harian">
+                    <span>📆</span> Proses LPP Harian
+                  </button>
+                </div>
+
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="lppPeriode1">Periode Awal</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">📅</span>
+                      <input type="text" id="lppPeriode1" class="custom-input" placeholder="DD/MM/YYYY">
+                    </div>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="lppPeriode2">Periode Akhir (s/d)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">📅</span>
+                      <input type="text" id="lppPeriode2" class="custom-input" placeholder="DD/MM/YYYY">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fields for LPP Harian (conditionally visible) -->
+                <div id="sectionLppHarianFields" style="display: none;">
+                  <div class="form-row mt-2">
+                    <div class="form-group flex-1">
+                      <label for="lppTanggalSo">Tanggal SO</label>
+                      <div class="input-with-icon">
+                        <span class="field-icon">📋</span>
+                        <input type="text" id="lppTanggalSo" class="custom-input" placeholder="DD/MM/YYYY">
+                      </div>
+                    </div>
+                    <div class="form-group flex-1" style="display: flex; align-items: flex-end; padding-bottom: 6px;">
+                      <label class="d-flex align-items-center gap-2" style="cursor: pointer; margin: 0; font-size: 11px;">
+                        <input type="checkbox" id="checkLppAudit" class="custom-checkbox">
+                        <span>Khusus PLU Audit</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Info Eksekusi Terakhir LPP -->
+                <div class="task-summary-box mt-2">
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Terakhir Dijalankan:</span>
+                    <span class="task-summary-val" id="lppLastRunTime">-</span>
+                  </div>
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Mode:</span>
+                    <span class="task-summary-val" id="lppLastMode">Bulanan</span>
+                  </div>
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Start / Finish Time:</span>
+                    <span class="task-summary-val" id="lppLastTimeWindow">-</span>
+                  </div>
+                  <div class="task-summary-row">
+                    <span class="task-summary-label">Status Terakhir:</span>
+                    <span class="task-summary-val" id="lppLastStatus" style="color: var(--success);">-</span>
+                  </div>
+                </div>
+
+                <div class="action-buttons-row mt-3">
+                  <button class="btn btn-primary btn-sm" id="btnRunLpp">
+                    <span>⚡</span> Jalankan Proses LPP Sekarang
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="btnCheckLppStatus">
+                    <span>🔄</span> Cek Status
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- Card: Catatan & Parameter Eksekusi IAS -->
-            <div class="glass-card mt-3">
-              <div class="card-header">
-                <div class="card-title-group">
-                  <span class="card-icon">📋</span>
-                  <h2>Parameter Tambahan & Catatan IAS</h2>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="form-group">
-                  <label for="textareaIasNotes">Daftar Dokumen / Nomor Referensi IAS (Opsional)</label>
-                  <textarea id="textareaIasNotes" class="modal-textarea" rows="3" placeholder="Masukkan nomor dokumen atau filter parameter khusus IAS di sini..."></textarea>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column: IAS Queue & Task Status -->
-          <div class="column-right">
-            <div class="glass-card" style="height: 100%; display: flex; flex-direction: column;">
+            <!-- Card: Tabel Riwayat Tugas Otomasi IAS -->
+            <div class="glass-card mt-3" style="display: flex; flex-direction: column;">
               <div class="card-header">
                 <div class="card-title-group">
                   <span class="card-icon">📊</span>
-                  <h2>Status Antrian & Integrasi IAS</h2>
+                  <h2>Riwayat Tugas Otomasi Web IAS</h2>
                 </div>
-                <span class="badge badge-success">Standby</span>
+                <span class="badge badge-success" id="badgeIasQueueCount">2 Tasks Siap</span>
               </div>
               <div class="card-body" style="flex: 1; display: flex; flex-direction: column;">
-                <div class="preview-header">
-                  <h3>Daftar Tugas Otomasi IAS:</h3>
-                  <small class="text-dim">Siap menerima instruksi</small>
-                </div>
-                <div class="table-responsive" style="flex: 1; max-height: 310px;">
+                <div class="table-responsive" style="max-height: 200px;">
                   <table class="custom-table">
                     <thead>
                       <tr>
-                        <th width="20%">Waktu</th>
-                        <th width="35%">Aksi Otomasi</th>
-                        <th width="25%">Status</th>
-                        <th width="20%">Output</th>
+                        <th width="25%">Waktu</th>
+                        <th width="35%">Nama Tugas</th>
+                        <th width="20%">Status</th>
+                        <th width="20%">Keterangan</th>
                       </tr>
                     </thead>
                     <tbody id="tableIasBody">
-                      <tr class="empty-row">
-                        <td colspan="4">Belum ada tugas IAS yang dieksekusi. Klik <strong>"🚀 Jalankan Otomasi IAS Sekarang"</strong>.</td>
+                      <tr>
+                        <td>Hari ini</td>
+                        <td><strong>Proses Hitstok</strong></td>
+                        <td><span class="badge badge-success">DONE</span></td>
+                        <td>1 & 2 Selesai</td>
+                      </tr>
+                      <tr>
+                        <td>Hari ini</td>
+                        <td><strong>Proses LPP</strong></td>
+                        <td><span class="badge badge-success">DONE</span></td>
+                        <td>Status Berjalan</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 

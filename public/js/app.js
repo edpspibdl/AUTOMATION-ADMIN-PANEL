@@ -738,6 +738,11 @@ function switchAdminView(targetViewId) {
   if (currentViewTitle) currentViewTitle.textContent = target.title;
 
   localStorage.setItem('activeAdminView', targetViewId);
+
+  if (targetViewId === 'viewIAS' && typeof loadIasTasksStatus === 'function') {
+    populateDefaultDates();
+    loadIasTasksStatus(true);
+  }
 }
 
 function initAdminNav() {
@@ -761,20 +766,56 @@ function initAdminNav() {
   switchAdminView(savedView);
 }
 
-// IAS Automation Elements
-const btnSaveIasConfig = document.getElementById('btnSaveIasConfig');
-const btnTestIasLogin = document.getElementById('btnTestIasLogin');
-const btnRunIasNow = document.getElementById('btnRunIasNow');
-const btnClearIasLogs = document.getElementById('btnClearIasLogs');
-const logIasConsole = document.getElementById('logIasConsole');
-const tableIasBody = document.getElementById('tableIasBody');
-const cardIasLastRun = document.getElementById('cardIasLastRun');
+// ============================================================================
+// MODUL OTOMASI WEB IAS (Task Hitstok & Proses LPP)
+// ============================================================================
 const inputIasUrl = document.getElementById('inputIasUrl');
 const selectIasKoneksi = document.getElementById('selectIasKoneksi');
 const inputIasUser = document.getElementById('inputIasUser');
 const inputIasPassword = document.getElementById('inputIasPassword');
-const selectIasAction = document.getElementById('selectIasAction');
-const inputIasBranch = document.getElementById('inputIasBranch');
+const btnSaveIasConfig = document.getElementById('btnSaveIasConfig');
+const btnTestIasLogin = document.getElementById('btnTestIasLogin');
+const btnClearIasLogs = document.getElementById('btnClearIasLogs');
+const logIasConsole = document.getElementById('logIasConsole');
+const tableIasBody = document.getElementById('tableIasBody');
+const badgeIasQueueCount = document.getElementById('badgeIasQueueCount');
+const btnRefreshAllIasStatus = document.getElementById('btnRefreshAllIasStatus');
+const cardIasLastRefresh = document.getElementById('cardIasLastRefresh');
+
+// Task 1: Hitstok Selectors
+const hitstokPeriode1 = document.getElementById('hitstokPeriode1');
+const hitstokPeriode2 = document.getElementById('hitstokPeriode2');
+const hitstokPlu1 = document.getElementById('hitstokPlu1');
+const hitstokPlu2 = document.getElementById('hitstokPlu2');
+const checkHitstokOnlineStock = document.getElementById('checkHitstokOnlineStock');
+const btnRunHitstok = document.getElementById('btnRunHitstok');
+const btnCheckHitstokStatus = document.getElementById('btnCheckHitstokStatus');
+const badgeHitstokStatus = document.getElementById('badgeHitstokStatus');
+const cardHitstokStatus = document.getElementById('cardHitstokStatus');
+const cardHitstokDetail = document.getElementById('cardHitstokDetail');
+const hitstokLastRunTime = document.getElementById('hitstokLastRunTime');
+const hitstokLastStatus = document.getElementById('hitstokLastStatus');
+const hitstokLastPluRange = document.getElementById('hitstokLastPluRange');
+
+// Task 2: LPP Selectors
+const tabLppBulanan = document.getElementById('tabLppBulanan');
+const tabLppHarian = document.getElementById('tabLppHarian');
+const sectionLppHarianFields = document.getElementById('sectionLppHarianFields');
+const lppPeriode1 = document.getElementById('lppPeriode1');
+const lppPeriode2 = document.getElementById('lppPeriode2');
+const lppTanggalSo = document.getElementById('lppTanggalSo');
+const checkLppAudit = document.getElementById('checkLppAudit');
+const btnRunLpp = document.getElementById('btnRunLpp');
+const btnCheckLppStatus = document.getElementById('btnCheckLppStatus');
+const badgeLppStatus = document.getElementById('badgeLppStatus');
+const cardLppStatus = document.getElementById('cardLppStatus');
+const cardLppDetail = document.getElementById('cardLppDetail');
+const lppLastRunTime = document.getElementById('lppLastRunTime');
+const lppLastMode = document.getElementById('lppLastMode');
+const lppLastTimeWindow = document.getElementById('lppLastTimeWindow');
+const lppLastStatus = document.getElementById('lppLastStatus');
+
+let currentLppMode = 'bulanan';
 
 function addIasLog(type, msg) {
   if (!logIasConsole) return;
@@ -784,6 +825,42 @@ function addIasLog(type, msg) {
   line.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg">${escapeHtml(msg)}</span>`;
   logIasConsole.appendChild(line);
   logIasConsole.scrollTop = logIasConsole.scrollHeight;
+}
+
+function renderTaskBadge(el, statusText) {
+  if (!el) return;
+  const st = (statusText || 'STANDBY').toUpperCase();
+  el.className = 'task-badge-live';
+  if (st === 'DONE' || st === 'SUCCESS') {
+    el.classList.add('task-badge-done');
+    el.innerHTML = `<span>●</span> DONE`;
+  } else if (st === 'LOADING' || st === 'EXEC') {
+    el.classList.add('task-badge-loading');
+    el.innerHTML = `<span>⏳</span> ${st}`;
+  } else if (st === 'WAITING' || st === 'STANDBY') {
+    el.classList.add('task-badge-waiting');
+    el.innerHTML = `<span>●</span> ${st}`;
+  } else {
+    el.classList.add('task-badge-error');
+    el.innerHTML = `<span>●</span> ${st}`;
+  }
+}
+
+function populateDefaultDates() {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+
+  const startOfMonth = `01/${month}/${year}`;
+  const today = `${day}/${month}/${year}`;
+
+  if (hitstokPeriode1 && !hitstokPeriode1.value) hitstokPeriode1.value = startOfMonth;
+  if (hitstokPeriode2 && !hitstokPeriode2.value) hitstokPeriode2.value = today;
+
+  if (lppPeriode1 && !lppPeriode1.value) lppPeriode1.value = startOfMonth;
+  if (lppPeriode2 && !lppPeriode2.value) lppPeriode2.value = today;
+  if (lppTanggalSo && !lppTanggalSo.value) lppTanggalSo.value = today;
 }
 
 // Load IAS Config
@@ -801,6 +878,257 @@ async function loadIasConfig() {
   }
 }
 
+// Load and Refresh Live Tasks Status (Hitstok & LPP)
+async function loadIasTasksStatus(silent = false) {
+  try {
+    if (!silent && btnRefreshAllIasStatus) {
+      btnRefreshAllIasStatus.disabled = true;
+      btnRefreshAllIasStatus.innerHTML = `<span>⏳</span> Memeriksa...`;
+    }
+
+    const res = await fetch('/api/ias/tasks/status');
+    const data = await res.json();
+
+    if (data.success) {
+      // 1. Render Hitstok
+      if (data.hitstok) {
+        const hData = data.hitstok.data;
+        let isDone = false;
+        if (Array.isArray(hData)) {
+          isDone = hData.every(d => d.status === 'DONE');
+        }
+        const statusText = isDone ? 'DONE' : (hData?.[0]?.status || 'STANDBY');
+        renderTaskBadge(badgeHitstokStatus, statusText);
+        if (cardHitstokStatus) {
+          cardHitstokStatus.textContent = statusText;
+          cardHitstokStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
+        }
+      }
+
+      if (data.lastHitstokRun) {
+        if (hitstokLastRunTime) hitstokLastRunTime.textContent = data.lastHitstokRun.time || '-';
+        if (hitstokLastStatus) {
+          hitstokLastStatus.textContent = data.lastHitstokRun.status || '-';
+          hitstokLastStatus.style.color = data.lastHitstokRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
+        }
+        if (hitstokLastPluRange) hitstokLastPluRange.textContent = data.lastHitstokRun.pluRange || 'SEMUA PLU';
+      }
+
+      // 2. Render LPP
+      if (data.lpp) {
+        const lData = data.lpp.data;
+        const statusText = lData?.status || 'STANDBY';
+        renderTaskBadge(badgeLppStatus, statusText);
+        if (cardLppStatus) {
+          cardLppStatus.textContent = statusText;
+          cardLppStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
+        }
+      }
+
+      if (data.lastLppRun) {
+        if (lppLastRunTime) lppLastRunTime.textContent = data.lastLppRun.time || '-';
+        if (lppLastMode) lppLastMode.textContent = data.lastLppRun.mode || 'Bulanan';
+        if (lppLastTimeWindow) lppLastTimeWindow.textContent = `${data.lastLppRun.startTime || '-'} / ${data.lastLppRun.endTime || '-'}`;
+        if (lppLastStatus) {
+          lppLastStatus.textContent = data.lastLppRun.status || '-';
+          lppLastStatus.style.color = data.lastLppRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
+        }
+      }
+
+      if (cardIasLastRefresh) {
+        cardIasLastRefresh.textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
+      }
+
+      updateIasSummaryTable(data);
+      if (!silent) showAlert('success', 'Status IAS Diperbarui', 'Status Hitstok dan LPP berhasil diperbarui dari Web IAS.');
+    }
+  } catch (err) {
+    console.error('Gagal mengambil status tasks IAS:', err);
+    if (!silent) showAlert('error', 'Koneksi IAS Gagal', err.message);
+  } finally {
+    if (btnRefreshAllIasStatus) {
+      btnRefreshAllIasStatus.disabled = false;
+      btnRefreshAllIasStatus.innerHTML = `<span>🔄</span> Cek Status Semua Task`;
+    }
+  }
+}
+
+function updateIasSummaryTable(data) {
+  if (!tableIasBody) return;
+  const rows = [];
+
+  if (data.lastHitstokRun) {
+    rows.push(`
+      <tr>
+        <td><code>${data.lastHitstokRun.time}</code></td>
+        <td><strong>Proses Hitstok</strong></td>
+        <td><span class="badge ${data.lastHitstokRun.status === 'DONE' ? 'badge-success' : 'badge-warning'}">${data.lastHitstokRun.status}</span></td>
+        <td>${data.lastHitstokRun.periode || '-'} (PLU: ${data.lastHitstokRun.pluRange || 'ALL'})</td>
+      </tr>
+    `);
+  } else {
+    rows.push(`
+      <tr>
+        <td>-</td>
+        <td><strong>Proses Hitstok</strong></td>
+        <td><span class="badge badge-info">STANDBY</span></td>
+        <td>Siap dijalankan</td>
+      </tr>
+    `);
+  }
+
+  if (data.lastLppRun) {
+    rows.push(`
+      <tr>
+        <td><code>${data.lastLppRun.time}</code></td>
+        <td><strong>Proses LPP (${data.lastLppRun.mode || 'Bulanan'})</strong></td>
+        <td><span class="badge ${data.lastLppRun.status === 'DONE' ? 'badge-success' : 'badge-warning'}">${data.lastLppRun.status}</span></td>
+        <td>${data.lastLppRun.periode || '-'}</td>
+      </tr>
+    `);
+  } else {
+    rows.push(`
+      <tr>
+        <td>-</td>
+        <td><strong>Proses LPP</strong></td>
+        <td><span class="badge badge-info">STANDBY</span></td>
+        <td>Siap dijalankan</td>
+      </tr>
+    `);
+  }
+
+  tableIasBody.innerHTML = rows.join('');
+}
+
+// Mode Tab Switching for LPP
+if (tabLppBulanan && tabLppHarian) {
+  tabLppBulanan.addEventListener('click', () => {
+    currentLppMode = 'bulanan';
+    tabLppBulanan.classList.add('active');
+    tabLppHarian.classList.remove('active');
+    if (sectionLppHarianFields) sectionLppHarianFields.style.display = 'none';
+  });
+
+  tabLppHarian.addEventListener('click', () => {
+    currentLppMode = 'harian';
+    tabLppHarian.classList.add('active');
+    tabLppBulanan.classList.remove('active');
+    if (sectionLppHarianFields) sectionLppHarianFields.style.display = 'block';
+  });
+}
+
+// Event: Run Task 1 (Hitstok)
+if (btnRunHitstok) {
+  btnRunHitstok.addEventListener('click', async () => {
+    const originalHtml = btnRunHitstok.innerHTML;
+    btnRunHitstok.disabled = true;
+    btnRunHitstok.innerHTML = `<span>⏳</span> Memproses Hitstok...`;
+    renderTaskBadge(badgeHitstokStatus, 'LOADING');
+
+    const payload = {
+      periode1: hitstokPeriode1 ? hitstokPeriode1.value.trim() : '',
+      periode2: hitstokPeriode2 ? hitstokPeriode2.value.trim() : '',
+      plu1: hitstokPlu1 ? hitstokPlu1.value.trim() : '',
+      plu2: hitstokPlu2 ? hitstokPlu2.value.trim() : '',
+      updateOnlineStock: checkHitstokOnlineStock ? checkHitstokOnlineStock.checked : true
+    };
+
+    addIasLog('info', `🚀 Memulai eksekusi Task Hitstok (Periode: ${payload.periode1} s/d ${payload.periode2}, PLU: ${payload.plu1 || 'ALL'})...`);
+    showAlert('info', 'Task Hitstok Dimulai', 'Sedang menjalankan proses hitung ulang stock di Web IAS...');
+
+    try {
+      const res = await fetch('/api/ias/tasks/hitstok/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        addIasLog('success', `✅ Task Hitung Ulang Stock selesai dengan status: ${result.status}`);
+        showAlert('success', 'Hitstok Selesai', `Proses Hitung Ulang Stock berhasil dieksekusi (${result.status})`);
+      } else {
+        addIasLog('error', `❌ Task Hitstok gagal: ${result.error}`);
+        showAlert('error', 'Hitstok Gagal', result.error || 'Terjadi kesalahan eksekusi.');
+      }
+      await loadIasTasksStatus(true);
+    } catch (err) {
+      addIasLog('error', `❌ Error request Hitstok: ${err.message}`);
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnRunHitstok.disabled = false;
+      btnRunHitstok.innerHTML = originalHtml;
+    }
+  });
+}
+
+// Event: Check Status Hitstok
+if (btnCheckHitstokStatus) {
+  btnCheckHitstokStatus.addEventListener('click', () => {
+    loadIasTasksStatus(false);
+  });
+}
+
+// Event: Run Task 2 (Proses LPP)
+if (btnRunLpp) {
+  btnRunLpp.addEventListener('click', async () => {
+    const originalHtml = btnRunLpp.innerHTML;
+    btnRunLpp.disabled = true;
+    btnRunLpp.innerHTML = `<span>⏳</span> Memproses LPP...`;
+    renderTaskBadge(badgeLppStatus, 'LOADING');
+
+    const payload = {
+      mode: currentLppMode,
+      periode1: lppPeriode1 ? lppPeriode1.value.trim() : '',
+      periode2: lppPeriode2 ? lppPeriode2.value.trim() : '',
+      tanggalSo: lppTanggalSo ? lppTanggalSo.value.trim() : '',
+      khususAudit: checkLppAudit ? checkLppAudit.checked : false
+    };
+
+    addIasLog('info', `🚀 Memulai eksekusi Task Proses LPP (${currentLppMode.toUpperCase()}, Periode: ${payload.periode1} s/d ${payload.periode2})...`);
+    showAlert('info', 'Task LPP Dimulai', `Sedang menjalankan proses LPP ${currentLppMode} di Web IAS...`);
+
+    try {
+      const res = await fetch('/api/ias/tasks/lpp/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        addIasLog('success', `✅ Task Proses LPP selesai! Status: ${result.status} (Start: ${result.startTime || '-'}, Finish: ${result.endTime || '-'})`);
+        showAlert('success', 'Proses LPP Selesai', `Proses LPP (${result.mode}) berhasil dieksekusi dengan status: ${result.status}`);
+      } else {
+        addIasLog('error', `❌ Task Proses LPP gagal: ${result.error}`);
+        showAlert('error', 'LPP Gagal', result.error || 'Terjadi kesalahan eksekusi.');
+      }
+      await loadIasTasksStatus(true);
+    } catch (err) {
+      addIasLog('error', `❌ Error request LPP: ${err.message}`);
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnRunLpp.disabled = false;
+      btnRunLpp.innerHTML = originalHtml;
+    }
+  });
+}
+
+// Event: Check Status LPP
+if (btnCheckLppStatus) {
+  btnCheckLppStatus.addEventListener('click', () => {
+    loadIasTasksStatus(false);
+  });
+}
+
+// Event: Refresh All IAS Tasks Status
+if (btnRefreshAllIasStatus) {
+  btnRefreshAllIasStatus.addEventListener('click', () => {
+    loadIasTasksStatus(false);
+  });
+}
+
+// Event: Save IAS Config
 if (btnSaveIasConfig) {
   btnSaveIasConfig.addEventListener('click', async () => {
     try {
@@ -828,6 +1156,7 @@ if (btnSaveIasConfig) {
   });
 }
 
+// Event: Test Login Web IAS
 if (btnTestIasLogin) {
   btnTestIasLogin.addEventListener('click', async () => {
     const originalText = btnTestIasLogin.innerHTML;
@@ -870,33 +1199,7 @@ if (btnTestIasLogin) {
   });
 }
 
-if (btnRunIasNow) {
-  btnRunIasNow.addEventListener('click', () => {
-    const actionName = selectIasAction ? selectIasAction.options[selectIasAction.selectedIndex].text : 'Otomasi IAS';
-    const actionPath = selectIasAction ? selectIasAction.value : '';
-    showAlert('info', 'Otomasi Dimulai', `Memulai eksekusi: ${actionName}`);
-    addIasLog('info', `🚀 Memulai proses otomasi: ${actionName} (${actionPath})...`);
-    addIasLog('info', `🔗 Menghubungkan ke portal: ${inputIasUrl.value} [${selectIasKoneksi.value.toUpperCase()}]...`);
-
-    setTimeout(() => {
-      addIasLog('success', `✅ Tugas ${actionName} berhasil diproses.`);
-      showAlert('success', 'Eksekusi Sukses', `Otomasi Web IAS untuk ${actionName} berhasil!`);
-      const now = new Date().toLocaleTimeString('id-ID');
-      if (cardIasLastRun) cardIasLastRun.textContent = now;
-      if (tableIasBody) {
-        tableIasBody.innerHTML = `
-          <tr>
-            <td><code>${now}</code></td>
-            <td><strong>${actionName}</strong></td>
-            <td><span class="badge badge-success">Sukses</span></td>
-            <td>Path: <code>${actionPath}</code></td>
-          </tr>
-        `;
-      }
-    }, 1500);
-  });
-}
-
+// Event: Clear IAS Logs
 if (btnClearIasLogs) {
   btnClearIasLogs.addEventListener('click', () => {
     if (logIasConsole) logIasConsole.innerHTML = '';
@@ -907,7 +1210,9 @@ if (btnClearIasLogs) {
 // Initial Load
 initTheme();
 initAdminNav();
+populateDefaultDates();
 loadConfig();
 loadIasConfig();
 setInterval(fetchLogs, 1500);
 fetchLogs();
+
