@@ -26,7 +26,6 @@ const liveClock = document.getElementById('liveClock');
 const toggleMarminGuard = document.getElementById('toggleMarminGuard');
 const selectMarminInterval = document.getElementById('selectMarminInterval');
 const btnRunMarminGuardNow = document.getElementById('btnRunMarminGuardNow');
-const btnRunMarminDirect = document.getElementById('btnRunMarminDirect');
 
 // Daily Manual Schedule Elements
 const toggleDailySchedule = document.getElementById('toggleDailySchedule');
@@ -267,11 +266,9 @@ async function loadConfig() {
 function updateRunningState(isRunning) {
   if (isRunning) {
     btnRunMarminGuardNow.disabled = true;
-    btnRunMarminDirect.disabled = true;
     btnRunManualDirect.disabled = true;
   } else {
     btnRunMarminGuardNow.disabled = false;
-    btnRunMarminDirect.disabled = false;
     btnRunManualDirect.disabled = false;
   }
 }
@@ -629,7 +626,6 @@ toggleDailySchedule.addEventListener('change', saveAllConfig);
 selectDailyAction.addEventListener('change', saveAllConfig);
 
 btnRunMarminGuardNow.addEventListener('click', triggerMarminGuardNow);
-btnRunMarminDirect.addEventListener('click', triggerMarminGuardNow);
 btnRunManualDirect.addEventListener('click', triggerManualScheduleNow);
 
 btnRunQueryPreview.addEventListener('click', runQueryPreview);

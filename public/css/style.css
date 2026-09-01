@@ -254,9 +254,9 @@ body {
    ========================================================================== */
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1.18fr 0.82fr;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .column-left, .column-right {
@@ -710,7 +710,7 @@ input:checked + .slider:before {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
-  height: 250px;
+  height: 180px;
   overflow-y: auto;
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   font-size: 11px;

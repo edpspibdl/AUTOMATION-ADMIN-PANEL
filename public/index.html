@@ -75,10 +75,10 @@
 
     <!-- Main Workspace (2 Columns) -->
     <div class="workspace-grid">
-      <!-- Left Column: Guard & Manual Controls -->
+      <!-- Left Column: Auto-Guard & Manual Schedule Controls -->
       <div class="column-left">
         
-        <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL (5 Menit Sekali Langsung Nonaktif) -->
+        <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL -->
         <div class="glass-card">
           <div class="card-header">
             <div class="card-title-group">
@@ -92,7 +92,7 @@
           </div>
           <div class="card-body">
             <p class="section-desc">
-              Sistem akan otomatis mengecek database PostgreSQL secara berkala. <strong>Jika terdeteksi ada item dengan Margin Minus, sistem akan langsung menonaktifkannya di CMS secara seketika!</strong>
+              Sistem mengecek database PostgreSQL secara berkala. <strong>Jika terdeteksi item Margin Minus, sistem akan langsung menonaktifkannya di CMS secara instan!</strong>
             </p>
             <div class="form-row mt-2">
               <div class="form-group flex-1">
@@ -119,7 +119,7 @@
 
             <div class="action-buttons-row mt-2">
               <button class="btn btn-outline btn-sm" id="btnOpenDbModal">
-                <span>🐘</span> Pengaturan Database PostgreSQL
+                <span>🐘</span> Pengaturan Database
               </button>
               <button class="btn btn-warning btn-sm" id="btnRunMarminGuardNow">
                 <span>🛡️</span> Cek & Nonaktifkan Marmin Sekarang
@@ -142,7 +142,7 @@
           </div>
           <div class="card-body">
             <p class="section-desc">
-              Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam tutup operasional toko).
+              Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional tutup toko).
             </p>
             <div class="form-row mt-2">
               <div class="form-group flex-1">
@@ -182,12 +182,20 @@
               <button class="btn btn-primary btn-sm" id="btnSaveConfig">
                 <span>💾</span> Simpan Pengaturan
               </button>
+              <button class="btn btn-success btn-sm" id="btnRunManualDirect">
+                <span>📋</span> Jalankan PLU Manual Sekarang
+              </button>
             </div>
           </div>
         </div>
 
+      </div>
+
+      <!-- Right Column: Live Data Margin Minus Table -->
+      <div class="column-right">
+        
         <!-- Card 3: Pratinjau Item Margin Minus Terdeteksi -->
-        <div class="glass-card mt-3" id="cardQuerySection">
+        <div class="glass-card" id="cardQuerySection" style="height: 100%; display: flex; flex-direction: column;">
           <div class="card-header">
             <div class="card-title-group">
               <span class="card-icon">📊</span>
@@ -200,12 +208,12 @@
               </button>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body" style="flex: 1; display: flex; flex-direction: column;">
             <div class="preview-header">
               <h3>Hasil Item Margin Minus Saat Ini:</h3>
               <small class="text-dim" id="dbLastQueryStatus">Belum dieksekusi</small>
             </div>
-            <div class="table-responsive">
+            <div class="table-responsive" style="flex: 1; max-height: 290px;">
               <table class="custom-table" id="tableDbPreview">
                 <thead>
                   <tr>
@@ -228,51 +236,26 @@
         </div>
 
       </div>
+    </div>
 
-      <!-- Right Column: Manual Run & Live Logs -->
-      <div class="column-right">
-        
-        <!-- Card: Eksekusi Manual Instan -->
-        <div class="glass-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">⚡</span>
-              <h2>Eksekusi Manual Cepat</h2>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="execution-actions-group">
-              <button class="btn btn-warning btn-block" id="btnRunMarminDirect">
-                <span>🛡️</span> Jalankan Guard Margin Minus Sekarang
-              </button>
-              <button class="btn btn-success btn-block mt-2" id="btnRunManualDirect">
-                <span>📋</span> Jalankan PLU Manual Sekarang
-              </button>
-            </div>
-          </div>
+    <!-- Bottom Full-Width Section: Terminal Console & Live Activity Logs -->
+    <div class="glass-card terminal-card mt-3">
+      <div class="card-header terminal-header">
+        <div class="terminal-dots">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          <span class="terminal-title">Live Activity Logs</span>
         </div>
-
-        <!-- Card 5: Terminal Console & Live Logs -->
-        <div class="glass-card terminal-card mt-3">
-          <div class="card-header terminal-header">
-            <div class="terminal-dots">
-              <span class="dot dot-red"></span>
-              <span class="dot dot-yellow"></span>
-              <span class="dot dot-green"></span>
-              <span class="terminal-title">Live Activity Logs</span>
-            </div>
-            <div class="terminal-actions">
-              <button class="btn btn-xs btn-ghost" id="btnClearLogs">Bersihkan</button>
-            </div>
-          </div>
-          <div class="terminal-body" id="logConsole">
-            <div class="log-line info">
-              <span class="log-time">[--:--:--]</span>
-              <span class="log-msg">Menghubungkan ke server...</span>
-            </div>
-          </div>
+        <div class="terminal-actions">
+          <button class="btn btn-xs btn-ghost" id="btnClearLogs">Bersihkan</button>
         </div>
-
+      </div>
+      <div class="terminal-body" id="logConsole">
+        <div class="log-line info">
+          <span class="log-time">[--:--:--]</span>
+          <span class="log-msg">Menghubungkan ke server...</span>
+        </div>
       </div>
     </div>
   </div>
