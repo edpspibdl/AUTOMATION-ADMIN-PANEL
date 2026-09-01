@@ -22,8 +22,8 @@ function setupSchedulers() {
 
   // 1. Setup Auto-Guard Margin Minus (Setiap X Menit)
   if (config.marminGuardEnabled) {
-    const mins = config.marminIntervalMinutes || 5;
-    const cronExpr = `*/${mins} * * * *`;
+    const mins = parseInt(config.marminIntervalMinutes, 10) || 5;
+    const cronExpr = mins === 1 ? '* * * * *' : `*/${mins} * * * *`;
     addLog('info', `🛡️ [MARMIN GUARD] Aktif! Pengecekan rutin setiap ${mins} menit sekali (Cron: ${cronExpr}) -> Langsung nonaktifkan jika terdeteksi.`);
 
     marminCronTask = cron.schedule(cronExpr, async () => {
