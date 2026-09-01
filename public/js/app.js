@@ -782,9 +782,15 @@ const badgeIasQueueCount = document.getElementById('badgeIasQueueCount');
 const btnRefreshAllIasStatus = document.getElementById('btnRefreshAllIasStatus');
 const cardIasLastRefresh = document.getElementById('cardIasLastRefresh');
 
+// Unified IAS Period Selectors
+const iasSharedPeriode1 = document.getElementById('iasSharedPeriode1');
+const iasSharedPeriode2 = document.getElementById('iasSharedPeriode2');
+const btnQuickThisMonth = document.getElementById('btnQuickThisMonth');
+const btnQuickPrevMonth = document.getElementById('btnQuickPrevMonth');
+const btnQuickToday = document.getElementById('btnQuickToday');
+const textLppActivePeriod = document.getElementById('textLppActivePeriod');
+
 // Task 1: Hitstok Selectors
-const hitstokPeriode1 = document.getElementById('hitstokPeriode1');
-const hitstokPeriode2 = document.getElementById('hitstokPeriode2');
 const hitstokPlu1 = document.getElementById('hitstokPlu1');
 const hitstokPlu2 = document.getElementById('hitstokPlu2');
 const checkHitstokOnlineStock = document.getElementById('checkHitstokOnlineStock');
@@ -797,14 +803,7 @@ const hitstokLastRunTime = document.getElementById('hitstokLastRunTime');
 const hitstokLastStatus = document.getElementById('hitstokLastStatus');
 const hitstokLastPluRange = document.getElementById('hitstokLastPluRange');
 
-// Task 2: LPP Selectors
-const tabLppBulanan = document.getElementById('tabLppBulanan');
-const tabLppHarian = document.getElementById('tabLppHarian');
-const sectionLppHarianFields = document.getElementById('sectionLppHarianFields');
-const lppPeriode1 = document.getElementById('lppPeriode1');
-const lppPeriode2 = document.getElementById('lppPeriode2');
-const lppTanggalSo = document.getElementById('lppTanggalSo');
-const checkLppAudit = document.getElementById('checkLppAudit');
+// Task 2: LPP Selectors (Bulanan)
 const btnRunLpp = document.getElementById('btnRunLpp');
 const btnCheckLppStatus = document.getElementById('btnCheckLppStatus');
 const badgeLppStatus = document.getElementById('badgeLppStatus');
@@ -814,8 +813,6 @@ const lppLastRunTime = document.getElementById('lppLastRunTime');
 const lppLastMode = document.getElementById('lppLastMode');
 const lppLastTimeWindow = document.getElementById('lppLastTimeWindow');
 const lppLastStatus = document.getElementById('lppLastStatus');
-
-let currentLppMode = 'bulanan';
 
 function addIasLog(type, msg) {
   if (!logIasConsole) return;
@@ -846,6 +843,12 @@ function renderTaskBadge(el, statusText) {
   }
 }
 
+function updateActivePeriodDisplay() {
+  if (textLppActivePeriod && iasSharedPeriode1 && iasSharedPeriode2) {
+    textLppActivePeriod.textContent = `${iasSharedPeriode1.value} s/d ${iasSharedPeriode2.value}`;
+  }
+}
+
 function populateDefaultDates() {
   const now = new Date();
   const day = String(now.getDate()).padStart(2, '0');
@@ -855,12 +858,64 @@ function populateDefaultDates() {
   const startOfMonth = `01/${month}/${year}`;
   const today = `${day}/${month}/${year}`;
 
-  if (hitstokPeriode1 && !hitstokPeriode1.value) hitstokPeriode1.value = startOfMonth;
-  if (hitstokPeriode2 && !hitstokPeriode2.value) hitstokPeriode2.value = today;
+  if (iasSharedPeriode1 && !iasSharedPeriode1.value) iasSharedPeriode1.value = startOfMonth;
+  if (iasSharedPeriode2 && !iasSharedPeriode2.value) iasSharedPeriode2.value = today;
 
-  if (lppPeriode1 && !lppPeriode1.value) lppPeriode1.value = startOfMonth;
-  if (lppPeriode2 && !lppPeriode2.value) lppPeriode2.value = today;
-  if (lppTanggalSo && !lppTanggalSo.value) lppTanggalSo.value = today;
+  updateActivePeriodDisplay();
+}
+
+if (iasSharedPeriode1) {
+  iasSharedPeriode1.addEventListener('input', updateActivePeriodDisplay);
+  iasSharedPeriode1.addEventListener('change', updateActivePeriodDisplay);
+}
+if (iasSharedPeriode2) {
+  iasSharedPeriode2.addEventListener('input', updateActivePeriodDisplay);
+  iasSharedPeriode2.addEventListener('change', updateActivePeriodDisplay);
+}
+
+// Quick Date Handlers
+if (btnQuickThisMonth) {
+  btnQuickThisMonth.addEventListener('click', () => {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    iasSharedPeriode1.value = `01/${month}/${year}`;
+    iasSharedPeriode2.value = `${day}/${month}/${year}`;
+    updateActivePeriodDisplay();
+    showAlert('info', 'Periode Diubah', `Periode diubah ke Bulan Ini: ${iasSharedPeriode1.value} s/d ${iasSharedPeriode2.value}`);
+  });
+}
+
+if (btnQuickPrevMonth) {
+  btnQuickPrevMonth.addEventListener('click', () => {
+    const now = new Date();
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const m = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+    const y = prevMonthDate.getFullYear();
+    const lastDay = String(lastDayPrevMonth.getDate()).padStart(2, '0');
+
+    iasSharedPeriode1.value = `01/${m}/${y}`;
+    iasSharedPeriode2.value = `${lastDay}/${m}/${y}`;
+    updateActivePeriodDisplay();
+    showAlert('info', 'Periode Diubah', `Periode diubah ke Bulan Lalu: ${iasSharedPeriode1.value} s/d ${iasSharedPeriode2.value}`);
+  });
+}
+
+if (btnQuickToday) {
+  btnQuickToday.addEventListener('click', () => {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const today = `${day}/${month}/${year}`;
+    iasSharedPeriode1.value = today;
+    iasSharedPeriode2.value = today;
+    updateActivePeriodDisplay();
+    showAlert('info', 'Periode Diubah', `Periode diubah ke Hari Ini: ${today}`);
+  });
 }
 
 // Load IAS Config
@@ -927,7 +982,7 @@ async function loadIasTasksStatus(silent = false) {
 
       if (data.lastLppRun) {
         if (lppLastRunTime) lppLastRunTime.textContent = data.lastLppRun.time || '-';
-        if (lppLastMode) lppLastMode.textContent = data.lastLppRun.mode || 'Bulanan';
+        if (lppLastMode) lppLastMode.textContent = 'Bulanan';
         if (lppLastTimeWindow) lppLastTimeWindow.textContent = `${data.lastLppRun.startTime || '-'} / ${data.lastLppRun.endTime || '-'}`;
         if (lppLastStatus) {
           lppLastStatus.textContent = data.lastLppRun.status || '-';
@@ -981,7 +1036,7 @@ function updateIasSummaryTable(data) {
     rows.push(`
       <tr>
         <td><code>${data.lastLppRun.time}</code></td>
-        <td><strong>Proses LPP (${data.lastLppRun.mode || 'Bulanan'})</strong></td>
+        <td><strong>Proses LPP (Bulanan)</strong></td>
         <td><span class="badge ${data.lastLppRun.status === 'DONE' ? 'badge-success' : 'badge-warning'}">${data.lastLppRun.status}</span></td>
         <td>${data.lastLppRun.periode || '-'}</td>
       </tr>
@@ -990,7 +1045,7 @@ function updateIasSummaryTable(data) {
     rows.push(`
       <tr>
         <td>-</td>
-        <td><strong>Proses LPP</strong></td>
+        <td><strong>Proses LPP (Bulanan)</strong></td>
         <td><span class="badge badge-info">STANDBY</span></td>
         <td>Siap dijalankan</td>
       </tr>
@@ -998,23 +1053,6 @@ function updateIasSummaryTable(data) {
   }
 
   tableIasBody.innerHTML = rows.join('');
-}
-
-// Mode Tab Switching for LPP
-if (tabLppBulanan && tabLppHarian) {
-  tabLppBulanan.addEventListener('click', () => {
-    currentLppMode = 'bulanan';
-    tabLppBulanan.classList.add('active');
-    tabLppHarian.classList.remove('active');
-    if (sectionLppHarianFields) sectionLppHarianFields.style.display = 'none';
-  });
-
-  tabLppHarian.addEventListener('click', () => {
-    currentLppMode = 'harian';
-    tabLppHarian.classList.add('active');
-    tabLppBulanan.classList.remove('active');
-    if (sectionLppHarianFields) sectionLppHarianFields.style.display = 'block';
-  });
 }
 
 // Event: Run Task 1 (Hitstok)
@@ -1026,15 +1064,15 @@ if (btnRunHitstok) {
     renderTaskBadge(badgeHitstokStatus, 'LOADING');
 
     const payload = {
-      periode1: hitstokPeriode1 ? hitstokPeriode1.value.trim() : '',
-      periode2: hitstokPeriode2 ? hitstokPeriode2.value.trim() : '',
+      periode1: iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '',
+      periode2: iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '',
       plu1: hitstokPlu1 ? hitstokPlu1.value.trim() : '',
       plu2: hitstokPlu2 ? hitstokPlu2.value.trim() : '',
       updateOnlineStock: checkHitstokOnlineStock ? checkHitstokOnlineStock.checked : true
     };
 
     addIasLog('info', `🚀 Memulai eksekusi Task Hitstok (Periode: ${payload.periode1} s/d ${payload.periode2}, PLU: ${payload.plu1 || 'ALL'})...`);
-    showAlert('info', 'Task Hitstok Dimulai', 'Sedang menjalankan proses hitung ulang stock di Web IAS...');
+    showAlert('info', 'Task Hitstok Dimulai', `Sedang menjalankan proses hitung ulang stock (${payload.periode1} s/d ${payload.periode2})...`);
 
     try {
       const res = await fetch('/api/ias/tasks/hitstok/run', {
@@ -1069,7 +1107,7 @@ if (btnCheckHitstokStatus) {
   });
 }
 
-// Event: Run Task 2 (Proses LPP)
+// Event: Run Task 2 (Proses LPP Bulanan)
 if (btnRunLpp) {
   btnRunLpp.addEventListener('click', async () => {
     const originalHtml = btnRunLpp.innerHTML;
@@ -1078,15 +1116,13 @@ if (btnRunLpp) {
     renderTaskBadge(badgeLppStatus, 'LOADING');
 
     const payload = {
-      mode: currentLppMode,
-      periode1: lppPeriode1 ? lppPeriode1.value.trim() : '',
-      periode2: lppPeriode2 ? lppPeriode2.value.trim() : '',
-      tanggalSo: lppTanggalSo ? lppTanggalSo.value.trim() : '',
-      khususAudit: checkLppAudit ? checkLppAudit.checked : false
+      mode: 'bulanan',
+      periode1: iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '',
+      periode2: iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : ''
     };
 
-    addIasLog('info', `🚀 Memulai eksekusi Task Proses LPP (${currentLppMode.toUpperCase()}, Periode: ${payload.periode1} s/d ${payload.periode2})...`);
-    showAlert('info', 'Task LPP Dimulai', `Sedang menjalankan proses LPP ${currentLppMode} di Web IAS...`);
+    addIasLog('info', `🚀 Memulai eksekusi Task Proses LPP Bulanan (Periode: ${payload.periode1} s/d ${payload.periode2})...`);
+    showAlert('info', 'Task LPP Dimulai', `Sedang menjalankan proses LPP Bulanan (${payload.periode1} s/d ${payload.periode2})...`);
 
     try {
       const res = await fetch('/api/ias/tasks/lpp/run', {
@@ -1098,7 +1134,7 @@ if (btnRunLpp) {
 
       if (result.success) {
         addIasLog('success', `✅ Task Proses LPP selesai! Status: ${result.status} (Start: ${result.startTime || '-'}, Finish: ${result.endTime || '-'})`);
-        showAlert('success', 'Proses LPP Selesai', `Proses LPP (${result.mode}) berhasil dieksekusi dengan status: ${result.status}`);
+        showAlert('success', 'Proses LPP Selesai', `Proses LPP Bulanan berhasil dieksekusi dengan status: ${result.status}`);
       } else {
         addIasLog('error', `❌ Task Proses LPP gagal: ${result.error}`);
         showAlert('error', 'LPP Gagal', result.error || 'Terjadi kesalahan eksekusi.');

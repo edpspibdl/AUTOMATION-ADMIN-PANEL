@@ -376,6 +376,42 @@
           </div>
         </div>
 
+        <!-- Unified Period Bar: Config Tanggal 1 Kali Saja untuk Semua Task -->
+        <div class="glass-card mb-3" style="border-left: 4px solid var(--primary);">
+          <div class="card-header" style="padding: 12px 18px;">
+            <div class="card-title-group">
+              <span class="card-icon">📅</span>
+              <h2 style="font-size: 14px;">Periode Proses Web IAS (Berlaku untuk Hitstok & Proses LPP)</h2>
+            </div>
+            <span class="badge badge-primary">Config 1 Kali Saja</span>
+          </div>
+          <div class="card-body" style="padding: 14px 18px;">
+            <div class="form-row align-items-center" style="gap: 16px; flex-wrap: wrap;">
+              <div class="form-group flex-1" style="min-width: 200px;">
+                <label for="iasSharedPeriode1">Periode Awal</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">📅</span>
+                  <input type="text" id="iasSharedPeriode1" class="custom-input" placeholder="DD/MM/YYYY">
+                </div>
+              </div>
+
+              <div class="form-group flex-1" style="min-width: 200px;">
+                <label for="iasSharedPeriode2">Periode Akhir (s/d)</label>
+                <div class="input-with-icon">
+                  <span class="field-icon">📅</span>
+                  <input type="text" id="iasSharedPeriode2" class="custom-input" placeholder="DD/MM/YYYY">
+                </div>
+              </div>
+
+              <div class="quick-dates-group" style="display: flex; gap: 8px; align-items: flex-end; padding-top: 18px;">
+                <button type="button" class="btn btn-xs btn-outline" id="btnQuickThisMonth">📅 Bulan Ini</button>
+                <button type="button" class="btn btn-xs btn-outline" id="btnQuickPrevMonth">⏮️ Bulan Lalu</button>
+                <button type="button" class="btn btn-xs btn-outline" id="btnQuickToday">🎯 Hari Ini Saja</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Main Workspace (2 Columns) for IAS -->
         <div class="workspace-grid">
           <!-- Left Column: Task 1 (Hitstok) & Connection Config -->
@@ -394,25 +430,8 @@
               </div>
               <div class="card-body">
                 <p class="section-desc">
-                  Otomasi eksekusi <strong>Hitung Ulang Stock</strong> (endpoint: <code>/bo/proses/hitungulangstock</code>). Mendukung filter range PLU spesifik dan update online stock.
+                  Otomasi eksekusi <strong>Hitung Ulang Stock</strong> (<code>/bo/proses/hitungulangstock</code>). Menggunakan periode tanggal di atas secara otomatis.
                 </p>
-
-                <div class="form-row mt-2">
-                  <div class="form-group flex-1">
-                    <label for="hitstokPeriode1">Periode Awal</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">📅</span>
-                      <input type="text" id="hitstokPeriode1" class="custom-input" placeholder="DD/MM/YYYY">
-                    </div>
-                  </div>
-                  <div class="form-group flex-1">
-                    <label for="hitstokPeriode2">Periode Akhir (s/d)</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">📅</span>
-                      <input type="text" id="hitstokPeriode2" class="custom-input" placeholder="DD/MM/YYYY">
-                    </div>
-                  </div>
-                </div>
 
                 <div class="form-row mt-2">
                   <div class="form-group flex-1">
@@ -526,15 +545,15 @@
 
           </div>
 
-          <!-- Right Column: Task 2 (Proses LPP) & Riwayat Antrian -->
+          <!-- Right Column: Task 2 (Proses LPP Bulanan) & Riwayat Antrian -->
           <div class="column-right">
             
-            <!-- Card 2: Task 2: PROSES LPP (Bulanan & Harian) -->
+            <!-- Card 2: Task 2: PROSES LPP (Bulanan) -->
             <div class="glass-card task-card">
               <div class="card-header">
                 <div class="card-title-group">
                   <span class="card-icon">📑</span>
-                  <h2>Task 2: Proses LPP (Bulanan & Harian)</h2>
+                  <h2>Task 2: Proses LPP (Bulanan)</h2>
                 </div>
                 <span class="task-badge-live task-badge-done" id="badgeLppStatus">
                   <span>●</span> DONE
@@ -542,63 +561,24 @@
               </div>
               <div class="card-body">
                 <p class="section-desc">
-                  Otomasi eksekusi <strong>Proses LPP</strong>. Pilih mode antara LPP Bulanan (<code>/bo/lpp/proses-lpp</code>) atau LPP Harian (<code>/bo/lpp/proses-lpp-harian</code>).
+                  Otomasi eksekusi <strong>Proses LPP Bulanan</strong> (endpoint: <code>/bo/lpp/proses-lpp</code>). Menjalankan proses LPP untuk seluruh cabang sesuai periode tanggal aktif di atas.
                 </p>
 
-                <!-- Mode Switcher Tabs -->
-                <div class="mode-tabs-container mt-2">
-                  <button type="button" class="mode-tab-btn active" id="tabLppBulanan" data-mode="bulanan">
-                    <span>📅</span> Proses LPP (Bulanan)
-                  </button>
-                  <button type="button" class="mode-tab-btn" id="tabLppHarian" data-mode="harian">
-                    <span>📆</span> Proses LPP Harian
-                  </button>
-                </div>
-
-                <div class="form-row mt-2">
-                  <div class="form-group flex-1">
-                    <label for="lppPeriode1">Periode Awal</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">📅</span>
-                      <input type="text" id="lppPeriode1" class="custom-input" placeholder="DD/MM/YYYY">
-                    </div>
-                  </div>
-                  <div class="form-group flex-1">
-                    <label for="lppPeriode2">Periode Akhir (s/d)</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">📅</span>
-                      <input type="text" id="lppPeriode2" class="custom-input" placeholder="DD/MM/YYYY">
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Fields for LPP Harian (conditionally visible) -->
-                <div id="sectionLppHarianFields" style="display: none;">
-                  <div class="form-row mt-2">
-                    <div class="form-group flex-1">
-                      <label for="lppTanggalSo">Tanggal SO</label>
-                      <div class="input-with-icon">
-                        <span class="field-icon">📋</span>
-                        <input type="text" id="lppTanggalSo" class="custom-input" placeholder="DD/MM/YYYY">
-                      </div>
-                    </div>
-                    <div class="form-group flex-1" style="display: flex; align-items: flex-end; padding-bottom: 6px;">
-                      <label class="d-flex align-items-center gap-2" style="cursor: pointer; margin: 0; font-size: 11px;">
-                        <input type="checkbox" id="checkLppAudit" class="custom-checkbox">
-                        <span>Khusus PLU Audit</span>
-                      </label>
-                    </div>
+                <div class="active-period-alert mt-2" style="padding: 10px 14px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 8px;">
+                  <div style="font-size: 11px; color: var(--text-dim);">Target Periode LPP yang Diproses:</div>
+                  <div style="font-size: 13px; font-weight: 700; color: var(--primary); margin-top: 2px;" id="textLppActivePeriod">
+                    01/09/2026 s/d 01/09/2026
                   </div>
                 </div>
 
                 <!-- Info Eksekusi Terakhir LPP -->
-                <div class="task-summary-box mt-2">
+                <div class="task-summary-box mt-3">
                   <div class="task-summary-row">
                     <span class="task-summary-label">Terakhir Dijalankan:</span>
                     <span class="task-summary-val" id="lppLastRunTime">-</span>
                   </div>
                   <div class="task-summary-row">
-                    <span class="task-summary-label">Mode:</span>
+                    <span class="task-summary-label">Mode LPP:</span>
                     <span class="task-summary-val" id="lppLastMode">Bulanan</span>
                   </div>
                   <div class="task-summary-row">
@@ -651,7 +631,7 @@
                       </tr>
                       <tr>
                         <td>Hari ini</td>
-                        <td><strong>Proses LPP</strong></td>
+                        <td><strong>Proses LPP (Bulanan)</strong></td>
                         <td><span class="badge badge-success">DONE</span></td>
                         <td>Status Berjalan</td>
                       </tr>
