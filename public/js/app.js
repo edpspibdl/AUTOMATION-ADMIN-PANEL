@@ -1662,8 +1662,8 @@ const bannerTidakBolehSelisih = document.getElementById('bannerTidakBolehSelisih
 const statusKroscekSummary = document.getElementById('statusKroscekSummary');
 
 const KROSCEK_ROWS = [
-  { key: 'saldoAkhirSebelumME', label: 'SALDO AKHIR BULAN SEBELUM ME', rumus: '', rule: 'LPP-01 Bulan Sebelumnya', isHeader: true },
-  { key: 'saldoAwalBulanME', label: 'SALDO AWAL BULAN ME', rumus: '', rule: 'Saldo Awal Grand Total LPP 01', isHeader: true },
+  { key: 'saldoAkhirSebelumME', label: 'SALDO AKHIR BULAN SEBELUM ME', rumus: 'LPP BULAN LALU (Grand Total Saldo Akhir)', rule: 'LPP-01 Bulan Sebelumnya', isHeader: true },
+  { key: 'saldoAwalBulanME', label: 'SALDO AWAL BULAN ME', rumus: 'LPP BULAN INI vs LPP BULAN LALU', rule: 'LPP Bulan Lalu vs LPP Bulan Ini (Harus Sama)', isHeader: true },
   { key: 'pembelianMurni', label: 'PEMBELIAN MURNI', rumus: 'LAP DFTR PEMBELIAN --> Gross - Potongan + Disc4', rule: 'IAS - BO - LAPORAN2-LAPORAN DFTR PEMBELIAN' },
   { key: 'pembelianBonus', label: 'PEMBELIAN BONUS', rumus: '', rule: 'Bonus Pembelian' },
   { key: 'transferIn', label: 'TRANSFER IN', rumus: 'REGISTER TAC + LAP TRANSFER HBV --> Total + Batal', rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)' },
@@ -1679,7 +1679,7 @@ const KROSCEK_ROWS = [
   { key: 'intransit', label: 'INTRANSIT', rumus: 'AKHIR BULAN HARUS = 0', rule: 'Akhir Bulan HARUS = 0', alert: true },
   { key: 'penyesuaian', label: 'PENYESUAIAN', rumus: 'REGISTER MPP --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
   { key: 'koreksi', label: 'KOREKSI', rumus: '', rule: 'Koreksi Nilai' },
-  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: '', rule: 'Saldo Akhir Grand Total LPP 01', isHeader: true }
+  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: 'LPP BULAN INI vs LPP BULAN BARU', rule: 'Saldo Akhir Grand Total LPP 01', isHeader: true }
 ];
 
 const ANTAR_LPP_ITEMS = [
@@ -1724,7 +1724,14 @@ function renderKroscekTables() {
 
   KROSCEK_ROWS.forEach(row => {
     const vLpp = parseInt(lpp[row.key] || 0, 10);
-    const vPem = parseInt(pem[row.key] || 0, 10);
+    let vPem = parseInt(pem[row.key] || 0, 10);
+
+    // Jika pembanding saldoAwalBulanME belum terisi, otomatis gunakan saldoAkhirSebelumME (LPP Bulan Lalu)
+    if (row.key === 'saldoAwalBulanME' && !vPem && lpp.saldoAkhirSebelumME) {
+      vPem = parseInt(lpp.saldoAkhirSebelumME, 10);
+      pem.saldoAwalBulanME = vPem;
+    }
+
     const selisih = vLpp - vPem;
 
     let isOk = (selisih === 0);

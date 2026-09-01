@@ -1153,7 +1153,12 @@ class IasAutomationService {
     };
 
     // Auto-update saldo awal & akhir pada antarLpp jika belum diisi manual
-    if (!data.antarLpp.lpp01_me_awal) data.antarLpp.lpp01_me_awal = saldoAwal;
+    data.antarLpp.lpp01_me_awal = saldoAwal;
+    if (data.lpp01.saldoAkhirSebelumME) {
+      data.pembanding.saldoAwalBulanME = data.lpp01.saldoAkhirSebelumME;
+      data.pembanding.saldoAkhirSebelumME = data.lpp01.saldoAkhirSebelumME;
+      data.antarLpp.lpp01_prev = data.lpp01.saldoAkhirSebelumME;
+    }
     if (!data.antarLpp.lpp01_me_akhir) data.antarLpp.lpp01_me_akhir = saldoAkhir;
 
     const kPath = this.getKroscekFilePath();
@@ -1203,7 +1208,11 @@ class IasAutomationService {
     const kData = this.getKroscekData();
     kData.lpp01.saldoAkhirSebelumME = saldoAkhirPrev;
     kData.pembanding.saldoAkhirSebelumME = saldoAkhirPrev;
+    kData.pembanding.saldoAwalBulanME = saldoAkhirPrev; // Saldo Akhir bln lalu adalah pembanding Saldo Awal bln ini
     kData.antarLpp.lpp01_prev = saldoAkhirPrev;
+    if (kData.lpp01.saldoAwalBulanME) {
+      kData.antarLpp.lpp01_me_awal = kData.lpp01.saldoAwalBulanME;
+    }
     this.saveKroscekData(kData);
 
     addLog('success', `[IAS] ✅ Saldo Akhir LPP Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${gt?.saldoAkhir?.rp || 0}`);
