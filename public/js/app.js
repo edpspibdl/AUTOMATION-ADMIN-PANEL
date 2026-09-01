@@ -739,9 +739,9 @@ function switchAdminView(targetViewId) {
 
   localStorage.setItem('activeAdminView', targetViewId);
 
-  if (targetViewId === 'viewIAS' && typeof loadIasTasksStatus === 'function') {
-    populateDefaultDates();
-    loadIasTasksStatus(true);
+  if (targetViewId === 'viewIAS') {
+    if (typeof populateDefaultDates === 'function') populateDefaultDates();
+    if (typeof autoConnectIasBackground === 'function') autoConnectIasBackground();
   }
 }
 
@@ -781,6 +781,90 @@ const tableIasBody = document.getElementById('tableIasBody');
 const badgeIasQueueCount = document.getElementById('badgeIasQueueCount');
 const btnRefreshAllIasStatus = document.getElementById('btnRefreshAllIasStatus');
 const cardIasLastRefresh = document.getElementById('cardIasLastRefresh');
+const cardIasSessionValue = document.getElementById('cardIasSessionValue');
+const cardIasSessionDetail = document.getElementById('cardIasSessionDetail');
+const badgeIasAutoLogin = document.getElementById('badgeIasAutoLogin');
+
+let isIasConnecting = false;
+
+// Auto-connect / Login otomatis di latar belakang saat buka menu
+async function autoConnectIasBackground() {
+  if (isIasConnecting) return;
+  isIasConnecting = true;
+
+  if (cardIasSessionValue) {
+    cardIasSessionValue.innerHTML = `<span style="color: var(--warning);">⏳ MENYIAPKAN SESI...</span>`;
+  }
+  if (cardIasSessionDetail) {
+    cardIasSessionDetail.textContent = `Auto-login latar belakang sedang berjalan...`;
+  }
+  if (badgeIasAutoLogin) {
+    badgeIasAutoLogin.className = 'badge badge-warning';
+    badgeIasAutoLogin.innerHTML = `<span class="live-dot" style="width:6px;height:6px;background:#f59e0b;border-radius:50%;display:inline-block;margin-right:4px;"></span>Menghubungkan...`;
+  }
+
+  addIasLog('info', '🌐 Menjalankan login Web IAS otomatis di latar belakang...');
+
+  try {
+    const payload = {
+      baseUrl: inputIasUrl ? inputIasUrl.value.trim() : 'http://172.31.146.190',
+      koneksi: selectIasKoneksi ? selectIasKoneksi.value : 'sim',
+      username: inputIasUser ? inputIasUser.value.trim() : 'RIS',
+      password: inputIasPassword ? inputIasPassword.value.trim() : '061201',
+      autoResetSession: true
+    };
+
+    const res = await fetch('/api/ias/auto-connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      const sess = data.session || {};
+      if (cardIasSessionValue) {
+        cardIasSessionValue.innerHTML = `<span style="color: var(--success);">🟢 TERHUBUNG (${sess.user || 'RIS'})</span>`;
+      }
+      if (cardIasSessionDetail) {
+        cardIasSessionDetail.textContent = `Sesi aktif (${sess.koneksi || 'SIMULASI'}) • Terhubung: ${sess.lastConnected || 'Barusan'}`;
+      }
+      if (badgeIasAutoLogin) {
+        badgeIasAutoLogin.className = 'badge badge-success';
+        badgeIasAutoLogin.innerHTML = `<span class="live-dot" style="width:6px;height:6px;background:#34d399;border-radius:50%;display:inline-block;margin-right:4px;"></span>Auto-Login Latar Belakang`;
+      }
+      addIasLog('success', `✅ Sesi Web IAS aktif di latar belakang (${sess.koneksi || 'SIMULASI'} - ${sess.user || 'RIS'})`);
+
+      // Update tasks status immediately from background session response
+      if (data.tasks) {
+        applyTasksDataToUi(data.tasks);
+      }
+    } else {
+      if (cardIasSessionValue) {
+        cardIasSessionValue.innerHTML = `<span style="color: var(--danger);">❌ GAGAL LOGIN</span>`;
+      }
+      if (cardIasSessionDetail) {
+        cardIasSessionDetail.textContent = data.error ? data.error.slice(0, 45) : 'Gagal login latar belakang';
+      }
+      if (badgeIasAutoLogin) {
+        badgeIasAutoLogin.className = 'badge badge-danger';
+        badgeIasAutoLogin.textContent = 'Gagal Login';
+      }
+      addIasLog('error', `❌ Auto-login latar belakang gagal: ${data.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error('Auto-connect error:', err);
+    if (cardIasSessionValue) {
+      cardIasSessionValue.innerHTML = `<span style="color: var(--danger);">❌ OFFLINE</span>`;
+    }
+    if (cardIasSessionDetail) {
+      cardIasSessionDetail.textContent = err.message;
+    }
+    addIasLog('error', `❌ Auto-login error: ${err.message}`);
+  } finally {
+    isIasConnecting = false;
+  }
+}
 
 // Unified IAS Period Selectors
 const iasSharedPeriode1 = document.getElementById('iasSharedPeriode1');
@@ -933,6 +1017,62 @@ async function loadIasConfig() {
   }
 }
 
+// Render data status tugas ke antarmuka UI
+function applyTasksDataToUi(data) {
+  if (!data || !data.success) return;
+
+  // 1. Render Hitstok
+  if (data.hitstok) {
+    const hData = data.hitstok.data;
+    let isDone = false;
+    if (Array.isArray(hData)) {
+      isDone = hData.every(d => d.status === 'DONE');
+    }
+    const statusText = isDone ? 'DONE' : (hData?.[0]?.status || 'STANDBY');
+    renderTaskBadge(badgeHitstokStatus, statusText);
+    if (cardHitstokStatus) {
+      cardHitstokStatus.textContent = statusText;
+      cardHitstokStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
+    }
+  }
+
+  if (data.lastHitstokRun) {
+    if (hitstokLastRunTime) hitstokLastRunTime.textContent = data.lastHitstokRun.time || '-';
+    if (hitstokLastStatus) {
+      hitstokLastStatus.textContent = data.lastHitstokRun.status || '-';
+      hitstokLastStatus.style.color = data.lastHitstokRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
+    }
+    if (hitstokLastPluRange) hitstokLastPluRange.textContent = data.lastHitstokRun.pluRange || 'SEMUA PLU';
+  }
+
+  // 2. Render LPP
+  if (data.lpp) {
+    const lData = data.lpp.data;
+    const statusText = lData?.status || 'STANDBY';
+    renderTaskBadge(badgeLppStatus, statusText);
+    if (cardLppStatus) {
+      cardLppStatus.textContent = statusText;
+      cardLppStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
+    }
+  }
+
+  if (data.lastLppRun) {
+    if (lppLastRunTime) lppLastRunTime.textContent = data.lastLppRun.time || '-';
+    if (lppLastMode) lppLastMode.textContent = 'Bulanan';
+    if (lppLastTimeWindow) lppLastTimeWindow.textContent = `${data.lastLppRun.startTime || '-'} / ${data.lastLppRun.endTime || '-'}`;
+    if (lppLastStatus) {
+      lppLastStatus.textContent = data.lastLppRun.status || '-';
+      lppLastStatus.style.color = data.lastLppRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
+    }
+  }
+
+  if (cardIasLastRefresh) {
+    cardIasLastRefresh.textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
+  }
+
+  updateIasSummaryTable(data);
+}
+
 // Load and Refresh Live Tasks Status (Hitstok & LPP)
 async function loadIasTasksStatus(silent = false) {
   try {
@@ -945,56 +1085,7 @@ async function loadIasTasksStatus(silent = false) {
     const data = await res.json();
 
     if (data.success) {
-      // 1. Render Hitstok
-      if (data.hitstok) {
-        const hData = data.hitstok.data;
-        let isDone = false;
-        if (Array.isArray(hData)) {
-          isDone = hData.every(d => d.status === 'DONE');
-        }
-        const statusText = isDone ? 'DONE' : (hData?.[0]?.status || 'STANDBY');
-        renderTaskBadge(badgeHitstokStatus, statusText);
-        if (cardHitstokStatus) {
-          cardHitstokStatus.textContent = statusText;
-          cardHitstokStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
-        }
-      }
-
-      if (data.lastHitstokRun) {
-        if (hitstokLastRunTime) hitstokLastRunTime.textContent = data.lastHitstokRun.time || '-';
-        if (hitstokLastStatus) {
-          hitstokLastStatus.textContent = data.lastHitstokRun.status || '-';
-          hitstokLastStatus.style.color = data.lastHitstokRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
-        }
-        if (hitstokLastPluRange) hitstokLastPluRange.textContent = data.lastHitstokRun.pluRange || 'SEMUA PLU';
-      }
-
-      // 2. Render LPP
-      if (data.lpp) {
-        const lData = data.lpp.data;
-        const statusText = lData?.status || 'STANDBY';
-        renderTaskBadge(badgeLppStatus, statusText);
-        if (cardLppStatus) {
-          cardLppStatus.textContent = statusText;
-          cardLppStatus.style.color = statusText === 'DONE' ? 'var(--success)' : 'var(--warning)';
-        }
-      }
-
-      if (data.lastLppRun) {
-        if (lppLastRunTime) lppLastRunTime.textContent = data.lastLppRun.time || '-';
-        if (lppLastMode) lppLastMode.textContent = 'Bulanan';
-        if (lppLastTimeWindow) lppLastTimeWindow.textContent = `${data.lastLppRun.startTime || '-'} / ${data.lastLppRun.endTime || '-'}`;
-        if (lppLastStatus) {
-          lppLastStatus.textContent = data.lastLppRun.status || '-';
-          lppLastStatus.style.color = data.lastLppRun.status === 'DONE' ? 'var(--success)' : 'var(--warning)';
-        }
-      }
-
-      if (cardIasLastRefresh) {
-        cardIasLastRefresh.textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
-      }
-
-      updateIasSummaryTable(data);
+      applyTasksDataToUi(data);
       if (!silent) showAlert('success', 'Status IAS Diperbarui', 'Status Hitstok dan LPP berhasil diperbarui dari Web IAS.');
     }
   } catch (err) {
@@ -1183,6 +1274,7 @@ if (btnSaveIasConfig) {
       if (data.success) {
         showAlert('success', 'Konfigurasi IAS Disimpan', 'Pengaturan URL, kredensial, dan koneksi Web IAS berhasil disimpan.');
         addIasLog('success', '💾 Pengaturan konfigurasi Web IAS berhasil disimpan.');
+        autoConnectIasBackground();
       } else {
         showAlert('error', 'Gagal Menyimpan', data.error || 'Terjadi kesalahan.');
       }

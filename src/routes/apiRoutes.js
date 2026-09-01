@@ -129,6 +129,21 @@ router.get('/ias/menus', (req, res) => {
   res.json({ success: true, total: menus.length, menus });
 });
 
+// Auto-Connect / Login Latar Belakang Web IAS
+router.post('/ias/auto-connect', async (req, res) => {
+  try {
+    const result = await iasService.autoConnectInBackground(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Ambil Status Sesi Terkini Web IAS
+router.get('/ias/session/status', (req, res) => {
+  res.json(iasService.getSessionStatus());
+});
+
 // Uji Login & Koneksi Web IAS
 router.post('/ias/test-login', async (req, res) => {
   const customConfig = req.body;

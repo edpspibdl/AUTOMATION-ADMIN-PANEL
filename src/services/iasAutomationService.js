@@ -8,6 +8,93 @@ class IasAutomationService {
     this.configFile = path.join(__dirname, '../../config.json');
     this.routesFile = path.join(__dirname, '../../ias_all_routes.json');
     this.activeTask = null; // tracking running task
+    this.sessionState = {
+      isConnected: false,
+      status: 'DISCONNECTED',
+      lastConnected: null,
+      lastConnectedTimestamp: null,
+      user: null,
+      koneksi: null,
+      url: null
+    };
+    this.connectionPromise = null;
+  }
+
+  getSessionStatus() {
+    return this.sessionState;
+  }
+
+  /**
+   * Auto-connect / login in background when opening the menu
+   */
+  async autoConnectInBackground(customConfig = null) {
+    // If already connected within the last 5 minutes, return current session
+    if (this.sessionState.isConnected && this.sessionState.lastConnectedTimestamp && (Date.now() - this.sessionState.lastConnectedTimestamp < 5 * 60 * 1000)) {
+      return {
+        success: true,
+        alreadyConnected: true,
+        session: this.sessionState
+      };
+    }
+
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.sessionState.status = 'CONNECTING';
+    addLog('info', `[IAS] 🌐 Menjalankan auto-login Web IAS di latar belakang...`);
+
+    this.connectionPromise = (async () => {
+      let session = null;
+      try {
+        session = await this.createSession(customConfig);
+        const currentUrl = session.page.url();
+        const config = session.config;
+
+        this.sessionState = {
+          isConnected: true,
+          status: 'CONNECTED',
+          lastConnected: new Date().toLocaleTimeString('id-ID'),
+          lastConnectedTimestamp: Date.now(),
+          user: config.username,
+          koneksi: (config.koneksi || '').toUpperCase(),
+          url: currentUrl
+        };
+
+        addLog('success', `[IAS] ✅ Auto-Login Latar Belakang BERHASIL! (User: ${config.username}, Koneksi: ${this.sessionState.koneksi})`);
+
+        // Fetch live tasks status using the same session
+        const tasksStatus = await this.getTasksLiveStatus(customConfig, session);
+
+        return {
+          success: true,
+          alreadyConnected: false,
+          session: this.sessionState,
+          tasks: tasksStatus
+        };
+      } catch (err) {
+        this.sessionState = {
+          isConnected: false,
+          status: 'ERROR',
+          lastConnected: null,
+          lastConnectedTimestamp: null,
+          error: err.message
+        };
+        addLog('error', `[IAS] ❌ Auto-Login Latar Belakang gagal: ${err.message}`);
+        return {
+          success: false,
+          error: err.message,
+          session: this.sessionState
+        };
+      } finally {
+        if (session && session.browser) {
+          await session.browser.close();
+        }
+        this.connectionPromise = null;
+      }
+    })();
+
+    return this.connectionPromise;
   }
 
   getConfig() {
@@ -65,7 +152,7 @@ class IasAutomationService {
    * Helper to create an authenticated browser session
    */
   async createSession(customConfig = null) {
-    const config = customConfig || this.getConfig();
+    const config = { ...this.getConfig(), ...(customConfig || {}) };
     const baseUrl = (config.baseUrl || 'http://172.31.146.190').replace(/\/$/, '');
     const loginUrl = `${baseUrl}/login`;
 
@@ -137,9 +224,21 @@ class IasAutomationService {
       }
 
       await page.waitForTimeout(2500);
-      const currentUrl = page.url();
+      let currentUrl = page.url();
       if (currentUrl.includes('/login')) {
-        throw new Error(`Gagal login ke IAS, halaman tetap berada di ${currentUrl}`);
+        // Check for any remaining modal buttons
+        const remainingSwal = await page.$('.swal2-confirm, .swal-button');
+        if (remainingSwal && await remainingSwal.isVisible()) {
+          await remainingSwal.click().catch(() => {});
+          await page.waitForTimeout(2000);
+        }
+
+        // Test accessing protected page to check if session was established
+        await page.goto(`${baseUrl}/bo/proses/hitungulangstock`, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+        currentUrl = page.url();
+        if (currentUrl.includes('/login')) {
+          throw new Error(`Gagal login ke IAS, halaman tetap berada di ${currentUrl}`);
+        }
       }
 
       addLog('success', `[IAS] Berhasil terautentikasi di Web IAS (${(config.koneksi || '').toUpperCase()} - ${config.username})`);
@@ -185,10 +284,14 @@ class IasAutomationService {
   /**
    * Check current live status for both Hitstok and LPP
    */
-  async getTasksLiveStatus(customConfig = null) {
-    let session = null;
+  async getTasksLiveStatus(customConfig = null, existingSession = null) {
+    let session = existingSession;
+    let shouldCloseSession = false;
     try {
-      session = await this.createSession(customConfig);
+      if (!session) {
+        session = await this.createSession(customConfig);
+        shouldCloseSession = true;
+      }
       const { page, baseUrl } = session;
 
       // 1. Check Hitstok
@@ -254,7 +357,7 @@ class IasAutomationService {
         error: err.message
       };
     } finally {
-      if (session && session.browser) {
+      if (shouldCloseSession && session && session.browser) {
         await session.browser.close();
       }
     }

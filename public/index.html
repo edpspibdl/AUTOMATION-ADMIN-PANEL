@@ -340,9 +340,9 @@
           <div class="metric-card">
             <div class="metric-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">🏢</div>
             <div class="metric-info">
-              <span class="metric-label">Status Modul IAS</span>
-              <h3 class="metric-value" style="color: var(--success);">SIAP DIGUNAKAN</h3>
-              <span class="metric-detail">SIMULASI (simspibdl1r - 1R)</span>
+              <span class="metric-label">Status Sesi Web IAS</span>
+              <h3 class="metric-value" id="cardIasSessionValue" style="color: var(--warning);">⏳ MENYIAPKAN...</h3>
+              <span class="metric-detail" id="cardIasSessionDetail">Auto-login latar belakang aktif</span>
             </div>
           </div>
 
@@ -360,7 +360,7 @@
             <div class="metric-info">
               <span class="metric-label">Status Proses LPP</span>
               <h3 class="metric-value" id="cardLppStatus">STANDBY</h3>
-              <span class="metric-detail" id="cardLppDetail">Proses LPP Bulanan & Harian</span>
+              <span class="metric-detail" id="cardLppDetail">Proses LPP Bulanan</span>
             </div>
           </div>
 
@@ -492,7 +492,10 @@
                   <span class="card-icon">⚙️</span>
                   <h2>Konfigurasi Akses Portal Web IAS</h2>
                 </div>
-                <span class="badge badge-info">SIMULASI</span>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge badge-success" id="badgeIasAutoLogin"><span class="live-dot" style="width: 6px; height: 6px; background: #34d399; border-radius: 50%; display: inline-block; margin-right: 4px;"></span>Auto-Login Latar Belakang</span>
+                  <span class="badge badge-info">SIMULASI</span>
+                </div>
               </div>
               <div class="card-body">
                 <div class="form-row">
