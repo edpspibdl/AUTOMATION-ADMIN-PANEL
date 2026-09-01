@@ -1014,7 +1014,151 @@ class IasAutomationService {
       }
     }
   }
+
+  // ==========================================================================
+  // KROSCEK DATA LAPORAN LPP (Posisi & Mutasi Persediaan SOP)
+  // ==========================================================================
+
+  getKroscekFilePath() {
+    return path.join(__dirname, '../../data_kroscek_lpp.json');
+  }
+
+  getDefaultKroscekData() {
+    return {
+      periode: '01/09/2026',
+      updatedAt: new Date().toISOString(),
+      lpp01: {
+        saldoAkhirSebelumME: 0,
+        saldoAwalBulanME: 0,
+        pembelianMurni: 0,
+        pembelianBonus: 0,
+        transferIn: 0,
+        returPenjualan: 0,
+        repack: 0,
+        penerimaanLain: 0,
+        penjualan: 0,
+        transferOut: 0,
+        prepack: 0,
+        hilang: 0,
+        pengeluaranLain: 0,
+        so: 0,
+        intransit: 0,
+        penyesuaian: 0,
+        koreksi: 0,
+        saldoAkhirBulanME: 0
+      },
+      pembanding: {
+        saldoAkhirSebelumME: 0,
+        saldoAwalBulanME: 0,
+        pembelianMurni: 0,
+        pembelianBonus: 0,
+        transferIn: 0,
+        returPenjualan: 0,
+        repack: 0,
+        penerimaanLain: 0,
+        penjualan: 0,
+        transferOut: 0,
+        prepack: 0,
+        hilang: 0,
+        pengeluaranLain: 0,
+        so: 0,
+        intransit: 0,
+        penyesuaian: 0,
+        koreksi: 0,
+        saldoAkhirBulanME: 0
+      },
+      antarLpp: {
+        lpp01_prev: 0,
+        lpp01_me_awal: 0,
+        lpp01_me_akhir: 0,
+        lpp01_next_awal: 0,
+        lpp02_prev: 0,
+        lpp02_me_awal: 0,
+        lpp02_me_akhir: 0,
+        lpp02_next_awal: 0,
+        lpp03_prev: 0,
+        lpp03_me_awal: 0,
+        lpp03_me_akhir: 0,
+        lpp03_next_awal: 0
+      }
+    };
+  }
+
+  getKroscekData() {
+    const kPath = this.getKroscekFilePath();
+    if (fs.existsSync(kPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(kPath, 'utf8'));
+        return data;
+      } catch (e) {
+        console.error('Error reading data_kroscek_lpp.json:', e);
+      }
+    }
+    const def = this.getDefaultKroscekData();
+    // Coba auto-sync dari data_register_lpp.json jika ada
+    return this.syncKroscekFromLpp01(def);
+  }
+
+  saveKroscekData(payload) {
+    const kPath = this.getKroscekFilePath();
+    const current = this.getKroscekData();
+    const merged = {
+      ...current,
+      ...payload,
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(kPath, JSON.stringify(merged, null, 2));
+    addLog('info', `[IAS] 💾 Data Kroscek LPP berhasil disimpan.`);
+    return merged;
+  }
+
+  syncKroscekFromLpp01(targetData = null) {
+    const data = targetData || this.getKroscekData();
+    const regLpp = this.getLatestRegisterLPP();
+    if (!regLpp || !regLpp.grandTotal) return data;
+
+    const gt = regLpp.grandTotal;
+    const parseNum = (val) => {
+      if (!val) return 0;
+      return parseInt(String(val).replace(/,/g, '').trim(), 10) || 0;
+    };
+
+    const saldoAwal = parseNum(gt.saldoAwal?.rp);
+    const saldoAkhir = parseNum(gt.saldoAkhir?.rp);
+
+    data.periode = regLpp.periode || data.periode;
+    data.lpp01 = {
+      ...data.lpp01,
+      saldoAwalBulanME: saldoAwal,
+      pembelianMurni: parseNum(gt.pembelianMurni || gt.murni),
+      pembelianBonus: parseNum(gt.pembelianBonus || gt.bonus),
+      transferIn: parseNum(gt.transferIn),
+      returPenjualan: parseNum(gt.returPenjualan),
+      repack: parseNum(gt.repackIn),
+      penerimaanLain: parseNum(gt.penerimaanLain),
+      penjualan: parseNum(gt.penjualan),
+      transferOut: parseNum(gt.transferOut),
+      prepack: parseNum(gt.repackOut),
+      hilang: parseNum(gt.hilang),
+      pengeluaranLain: parseNum(gt.pengeluaranLain),
+      so: parseNum(gt.so),
+      penyesuaian: parseNum(gt.penyesuaian),
+      koreksi: parseNum(gt.koreksi),
+      saldoAkhirBulanME: saldoAkhir
+    };
+
+    // Auto-update saldo awal & akhir pada antarLpp jika belum diisi manual
+    if (!data.antarLpp.lpp01_me_awal) data.antarLpp.lpp01_me_awal = saldoAwal;
+    if (!data.antarLpp.lpp01_me_akhir) data.antarLpp.lpp01_me_akhir = saldoAkhir;
+
+    const kPath = this.getKroscekFilePath();
+    fs.writeFileSync(kPath, JSON.stringify(data, null, 2));
+    addLog('success', `[IAS] 🔄 Sinkronisasi nilai Grand Total LPP 01 ke Template Kroscek berhasil (Saldo: Rp ${gt.saldoAwal?.rp || 0})`);
+
+    return data;
+  }
 }
 
 module.exports = new IasAutomationService();
+
 

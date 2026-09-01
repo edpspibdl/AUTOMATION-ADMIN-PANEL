@@ -304,4 +304,85 @@ router.get('/ias/register-lpp/export-csv', (req, res) => {
   res.send(csvRows.join('\n'));
 });
 
+// ============================================================================
+// KROSCEK DATA LAPORAN LPP (Posisi & Mutasi Persediaan SOP)
+// ============================================================================
+
+router.get('/ias/kroscek', (req, res) => {
+  try {
+    const data = iasService.getKroscekData();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/save', (req, res) => {
+  try {
+    const saved = iasService.saveKroscekData(req.body);
+    res.json({ success: true, data: saved });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/sync-lpp01', (req, res) => {
+  try {
+    const synced = iasService.syncKroscekFromLpp01();
+    res.json({ success: true, data: synced });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/ias/kroscek/export-csv', (req, res) => {
+  const data = iasService.getKroscekData();
+  const escapeCsv = (str) => {
+    if (str === null || str === undefined) return '""';
+    const s = String(str).replace(/"/g, '""');
+    return `"${s}"`;
+  };
+
+  const lpp = data.lpp01 || {};
+  const pem = data.pembanding || {};
+  const antar = data.antarLpp || {};
+
+  const rows = [
+    ['REGISTER LPP', 'DATA LPP 01', 'KROSCEK DATA LAPORAN', 'NILAI PEMBANDING', 'SELISIH', 'KETERANGAN'],
+    ['SALDO AKHIR BULAN SEBELUM ME', lpp.saldoAkhirSebelumME || 0, '', pem.saldoAkhirSebelumME || 0, (lpp.saldoAkhirSebelumME || 0) - (pem.saldoAkhirSebelumME || 0), 'LPP-01 Bulan Sebelumnya'],
+    ['SALDO AWAL BULAN ME', lpp.saldoAwalBulanME || 0, '', pem.saldoAwalBulanME || 0, (lpp.saldoAwalBulanME || 0) - (pem.saldoAwalBulanME || 0), 'Saldo Awal Grand Total LPP 01'],
+    ['PEMBELIAN MURNI', lpp.pembelianMurni || 0, 'LAP DFTR PEMBELIAN --> Gross - Potongan + Disc4', pem.pembelianMurni || 0, (lpp.pembelianMurni || 0) - (pem.pembelianMurni || 0), 'IAS - BO - LAPORAN2-LAPORAN DFTR PEMBELIAN'],
+    ['PEMBELIAN BONUS', lpp.pembelianBonus || 0, '', pem.pembelianBonus || 0, (lpp.pembelianBonus || 0) - (pem.pembelianBonus || 0), 'Bonus Pembelian'],
+    ['TRANSFER IN', lpp.transferIn || 0, 'REGISTER TAC + LAP TRANSFER HBV --> Total + Batal', pem.transferIn || 0, (lpp.transferIn || 0) - (pem.transferIn || 0), '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)'],
+    ['RETUR PENJUALAN', lpp.returPenjualan || 0, 'OMI>>LAP REGISTER BARANG RETUR --> Total', pem.returPenjualan || 0, (lpp.returPenjualan || 0) - (pem.returPenjualan || 0), 'Kalo selisih berarti ada yang belum BPBR'],
+    ['REPACK', lpp.repack || 0, 'LAPORAN REPACKING --> HARUS SAMA DENGAN PREPACK', pem.repack || 0, (lpp.repack || 0) - (pem.repack || 0), 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dengan prepack)'],
+    ['LAIN2 (Penerimaan)', lpp.penerimaanLain || 0, 'LPP RETUR + LPP RUSAK --> Pengeluaran Lain Baik', pem.penerimaanLain || 0, (lpp.penerimaanLain || 0) - (pem.penerimaanLain || 0), 'IAS - BO - LPP'],
+    ['PENJUALAN', lpp.penjualan || 0, 'LAPORAN PENJUALAN --> HPP RATA2', pem.penjualan || 0, (lpp.penjualan || 0) - (pem.penjualan || 0), 'IAS - FO - LAP. KASIR (PER DEPARTEMENT) - Dibawah 5000 OK'],
+    ['TRANSFER OUT', lpp.transferOut || 0, 'REGISTER SURAT JALAN + LAP TRANSFER HBV--> Total + Batal', pem.transferOut || 0, (lpp.transferOut || 0) - (pem.transferOut || 0), '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)'],
+    ['PREPACK', lpp.prepack || 0, 'LAPORAN PREPACK --> HARUS SAMA DENGAN REPACKING', pem.prepack || 0, (lpp.prepack || 0) - (pem.prepack || 0), 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dengan repack)'],
+    ['HILANG', lpp.hilang || 0, 'REGISTER NBH --> Total - Batal', pem.hilang || 0, (lpp.hilang || 0) - (pem.hilang || 0), 'IAS - BO - CETAK REGISTER'],
+    ['LAIN2 (Pengeluaran)', lpp.pengeluaranLain || 0, 'LPP RETUR + LPP RUSAK (Penerimaan Baik) + BA RETUR IDM (DPP)', pem.pengeluaranLain || 0, (lpp.pengeluaranLain || 0) - (pem.pengeluaranLain || 0), '(IAS - BO - LPP) + (IAS - BO - LPP - REGISTER BA IDM (REKAP))'],
+    ['SO', lpp.so || 0, 'LAP REKAP ADJUST SO --> Total', pem.so || 0, (lpp.so || 0) - (pem.so || 0), 'IAS - BO - LPP'],
+    ['INTRANSIT', lpp.intransit || 0, 'AKHIR BULAN HARUS = 0', pem.intransit || 0, (lpp.intransit || 0) - (pem.intransit || 0), 'Akhir Bulan HARUS = 0'],
+    ['PENYESUAIAN', lpp.penyesuaian || 0, 'REGISTER MPP --> Total - Batal', pem.penyesuaian || 0, (lpp.penyesuaian || 0) - (pem.penyesuaian || 0), 'IAS - BO - CETAK REGISTER'],
+    ['KOREKSI', lpp.koreksi || 0, '', pem.koreksi || 0, (lpp.koreksi || 0) - (pem.koreksi || 0), 'Koreksi Nilai'],
+    ['SALDO AKHIR BULAN ME', lpp.saldoAkhirBulanME || 0, '', pem.saldoAkhirBulanME || 0, (lpp.saldoAkhirBulanME || 0) - (pem.saldoAkhirBulanME || 0), 'Saldo Akhir Grand Total LPP 01'],
+    [],
+    ['=== KROSCEK ANTAR BULAN & ANTAR LPP (TIDAK BOLEH ADA SELISIH) ==='],
+    ['KATEGORI KOMPARASI', 'NILAI 1', 'NILAI 2', 'SELISIH', 'STATUS'],
+    ['Saldo Akhir LPP-01 Bulan Sebelumnya vs Saldo Awal LPP-01 Bulan ME', antar.lpp01_prev || 0, antar.lpp01_me_awal || 0, (antar.lpp01_prev || 0) - (antar.lpp01_me_awal || 0), (antar.lpp01_prev || 0) === (antar.lpp01_me_awal || 0) ? 'OK' : 'SELISIH'],
+    ['Saldo Akhir LPP-01 Bulan ME vs Saldo Awal LPP-01 Bulan Baru', antar.lpp01_me_akhir || 0, antar.lpp01_next_awal || 0, (antar.lpp01_me_akhir || 0) - (antar.lpp01_next_awal || 0), (antar.lpp01_me_akhir || 0) === (antar.lpp01_next_awal || 0) ? 'OK' : 'SELISIH'],
+    ['Saldo Akhir LPP-02 Bulan Sebelumnya vs Saldo Awal LPP-02 Bulan ME', antar.lpp02_prev || 0, antar.lpp02_me_awal || 0, (antar.lpp02_prev || 0) - (antar.lpp02_me_awal || 0), (antar.lpp02_prev || 0) === (antar.lpp02_me_awal || 0) ? 'OK' : 'SELISIH'],
+    ['Saldo Akhir LPP-02 Bulan ME vs Saldo Awal LPP-02 Bulan Baru', antar.lpp02_me_akhir || 0, antar.lpp02_next_awal || 0, (antar.lpp02_me_akhir || 0) - (antar.lpp02_next_awal || 0), (antar.lpp02_me_akhir || 0) === (antar.lpp02_next_awal || 0) ? 'OK' : 'SELISIH'],
+    ['Saldo Akhir LPP-03 Bulan Sebelumnya vs Saldo Awal LPP-03 Bulan ME', antar.lpp03_prev || 0, antar.lpp03_me_awal || 0, (antar.lpp03_prev || 0) - (antar.lpp03_me_awal || 0), (antar.lpp03_prev || 0) === (antar.lpp03_me_awal || 0) ? 'OK' : 'SELISIH'],
+    ['Saldo Akhir LPP-03 Bulan ME vs Saldo Awal LPP-03 Bulan Baru', antar.lpp03_me_akhir || 0, antar.lpp03_next_awal || 0, (antar.lpp03_me_akhir || 0) - (antar.lpp03_next_awal || 0), (antar.lpp03_me_akhir || 0) === (antar.lpp03_next_awal || 0) ? 'OK' : 'SELISIH']
+  ];
+
+  const csvContent = rows.map(r => r.map(escapeCsv).join(',')).join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="Kroscek_LPP_${data.periode?.replace(/\//g, '-') || 'ME'}.csv"`);
+  res.send(csvContent);
+});
+
 module.exports = router;
+

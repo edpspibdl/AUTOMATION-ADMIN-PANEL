@@ -1578,6 +1578,15 @@ async function triggerFetchRegisterLpp() {
     const data = await res.json();
     if (data.success) {
       applyLppDataToUi(data);
+      // Auto-sync kroscek table
+      fetch('/api/ias/kroscek/sync-lpp01', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && res.data) {
+            kroscekState = res.data;
+            renderKroscekTables();
+          }
+        }).catch(() => {});
       showAlert('success', 'Register LPP Berhasil Diekstrak', `Berhasil mengekstrak ${data.totalCategories} kategori dan Grand Total sebagai data pembanding.`);
     } else {
       renderTaskBadge(badgeRegisterLppStatus, 'ERROR');
@@ -1641,6 +1650,242 @@ if (selectFilterLppDivisi) {
   selectFilterLppDivisi.addEventListener('change', renderLppTable);
 }
 
+// ============================================================================
+// TASK 4: KROSCEK DATA LAPORAN LPP (Posisi & Mutasi Persediaan SOP)
+// ============================================================================
+
+const tbodyKroscekMain = document.getElementById('tbodyKroscekMain');
+const tbodyAntarLpp = document.getElementById('tbodyAntarLpp');
+const btnSyncKroscekLpp01 = document.getElementById('btnSyncKroscekLpp01');
+const btnSaveKroscek = document.getElementById('btnSaveKroscek');
+const bannerTidakBolehSelisih = document.getElementById('bannerTidakBolehSelisih');
+const statusKroscekSummary = document.getElementById('statusKroscekSummary');
+
+const KROSCEK_ROWS = [
+  { key: 'saldoAkhirSebelumME', label: 'SALDO AKHIR BULAN SEBELUM ME', rumus: '', rule: 'LPP-01 Bulan Sebelumnya', isHeader: true },
+  { key: 'saldoAwalBulanME', label: 'SALDO AWAL BULAN ME', rumus: '', rule: 'Saldo Awal Grand Total LPP 01', isHeader: true },
+  { key: 'pembelianMurni', label: 'PEMBELIAN MURNI', rumus: 'LAP DFTR PEMBELIAN --> Gross - Potongan + Disc4', rule: 'IAS - BO - LAPORAN2-LAPORAN DFTR PEMBELIAN' },
+  { key: 'pembelianBonus', label: 'PEMBELIAN BONUS', rumus: '', rule: 'Bonus Pembelian' },
+  { key: 'transferIn', label: 'TRANSFER IN', rumus: 'REGISTER TAC + LAP TRANSFER HBV --> Total + Batal', rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)' },
+  { key: 'returPenjualan', label: 'RETUR PENJUALAN', rumus: 'OMI>>LAP REGISTER BARANG RETUR --> Total', rule: 'Kalo selisih berarti ada yang belum BPBR', alert: true },
+  { key: 'repack', label: 'REPACK', rumus: 'LAPORAN REPACKING --> HARUS SAMA DENGAN PREPACK', rule: 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dg prepack)' },
+  { key: 'penerimaanLain', label: 'LAIN2 (Penerimaan)', rumus: 'LPP RETUR + LPP RUSAK --> Pengeluaran Lain Baik', rule: 'IAS - BO - LPP' },
+  { key: 'penjualan', label: 'PENJUALAN', rumus: 'LAPORAN PENJUALAN --> HPP RATA2', rule: 'IAS - FO - LAP. KASIR (PER DEPT) - Dibawah 5000 OK', tolerance: 5000 },
+  { key: 'transferOut', label: 'TRANSFER OUT', rumus: 'REGISTER SURAT JALAN + LAP TRANSFER HBV--> Total + Batal', rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)' },
+  { key: 'prepack', label: 'PREPACK', rumus: 'LAPORAN PREPACK --> HARUS SAMA DENGAN REPACKING', rule: 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dg repack)' },
+  { key: 'hilang', label: 'HILANG', rumus: 'REGISTER NBH --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
+  { key: 'pengeluaranLain', label: 'LAIN2 (Pengeluaran)', rumus: 'LPP RETUR + LPP RUSAK (Penerimaan Baik) + BA RETUR IDM (DPP)', rule: '(IAS - BO - LPP) + (IAS - BO - LPP - REG BA IDM)' },
+  { key: 'so', label: 'SO', rumus: 'LAP REKAP ADJUST SO --> Total', rule: 'IAS - BO - LPP' },
+  { key: 'intransit', label: 'INTRANSIT', rumus: 'AKHIR BULAN HARUS = 0', rule: 'Akhir Bulan HARUS = 0', alert: true },
+  { key: 'penyesuaian', label: 'PENYESUAIAN', rumus: 'REGISTER MPP --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
+  { key: 'koreksi', label: 'KOREKSI', rumus: '', rule: 'Koreksi Nilai' },
+  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: '', rule: 'Saldo Akhir Grand Total LPP 01', isHeader: true }
+];
+
+const ANTAR_LPP_ITEMS = [
+  { key1: 'lpp01_prev', key2: 'lpp01_me_awal', label: 'Saldo Akhir LPP-01 Bln Lalu vs Saldo Awal LPP-01 Bln ME' },
+  { key1: 'lpp01_me_akhir', key2: 'lpp01_next_awal', label: 'Saldo Akhir LPP-01 Bln ME vs Saldo Awal LPP-01 Bln Baru' },
+  { key1: 'lpp02_prev', key2: 'lpp02_me_awal', label: 'Saldo Akhir LPP-02 Bln Lalu vs Saldo Awal LPP-02 Bln ME' },
+  { key1: 'lpp02_me_akhir', key2: 'lpp02_next_awal', label: 'Saldo Akhir LPP-02 Bln ME vs Saldo Awal LPP-02 Bln Baru' },
+  { key1: 'lpp03_prev', key2: 'lpp03_me_awal', label: 'Saldo Akhir LPP-03 Bln Lalu vs Saldo Awal LPP-03 Bln ME' },
+  { key1: 'lpp03_me_akhir', key2: 'lpp03_next_awal', label: 'Saldo Akhir LPP-03 Bln ME vs Saldo Awal LPP-03 Bln Baru' }
+];
+
+let kroscekState = null;
+
+async function loadKroscekData() {
+  try {
+    const res = await fetch('/api/ias/kroscek');
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.success && json.data) {
+      kroscekState = json.data;
+      renderKroscekTables();
+    }
+  } catch (err) {
+    console.error('Error loading kroscek data:', err);
+  }
+}
+
+function parseInputNumber(val) {
+  if (!val) return 0;
+  return parseInt(String(val).replace(/,/g, '').trim(), 10) || 0;
+}
+
+function renderKroscekTables() {
+  if (!kroscekState || !tbodyKroscekMain || !tbodyAntarLpp) return;
+
+  const lpp = kroscekState.lpp01 || {};
+  const pem = kroscekState.pembanding || {};
+  const antar = kroscekState.antarLpp || {};
+
+  let totalSelisihCount = 0;
+  let mainHtml = '';
+
+  KROSCEK_ROWS.forEach(row => {
+    const vLpp = parseInt(lpp[row.key] || 0, 10);
+    const vPem = parseInt(pem[row.key] || 0, 10);
+    const selisih = vLpp - vPem;
+
+    let isOk = (selisih === 0);
+    if (row.tolerance && Math.abs(selisih) <= row.tolerance) {
+      isOk = true;
+    }
+
+    if (!isOk) totalSelisihCount++;
+
+    const badgeSelisihClass = isOk
+      ? 'background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4);'
+      : 'background: rgba(239, 68, 68, 0.25); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); font-weight: 800;';
+
+    const rowBg = row.isHeader
+      ? 'background: rgba(255,255,255,0.03); font-weight: 700;'
+      : '';
+
+    mainHtml += `
+      <tr style="${rowBg}">
+        <td style="padding: 6px 12px; font-weight: 600; color: ${row.alert ? '#ef4444' : 'var(--text-main)'};">
+          ${escapeHtml(row.label)}
+        </td>
+        <td style="padding: 6px 12px; text-align: right; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.08);">
+          ${formatRp(vLpp)}
+        </td>
+        <td style="padding: 6px 12px; color: var(--text-muted); font-size: 11px;">
+          ${row.rumus ? `<span style="padding: 2px 6px; background: rgba(6, 182, 212, 0.1); border-radius: 4px; color: #06b6d4;">${escapeHtml(row.rumus)}</span>` : '-'}
+        </td>
+        <td style="padding: 4px 8px; text-align: right;">
+          <input type="text" class="custom-input kroscek-pem-input" data-key="${row.key}" value="${formatRp(vPem)}"
+            style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 600; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(6, 182, 212, 0.3);">
+        </td>
+        <td style="padding: 6px 12px; text-align: right;">
+          <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; ${badgeSelisihClass}">
+            ${selisih > 0 ? '+' : ''}${formatRp(selisih)}
+          </span>
+        </td>
+        <td style="padding: 6px 12px; font-size: 11px; color: #f59e0b;">
+          ${escapeHtml(row.rule)}
+        </td>
+      </tr>
+    `;
+  });
+
+  tbodyKroscekMain.innerHTML = mainHtml;
+
+  // Render Antar LPP Table
+  let antarHtml = '';
+  ANTAR_LPP_ITEMS.forEach(item => {
+    const v1 = parseInt(antar[item.key1] || 0, 10);
+    const v2 = parseInt(antar[item.key2] || 0, 10);
+    const diff = v1 - v2;
+    const ok = (diff === 0);
+    if (!ok) totalSelisihCount++;
+
+    const diffBadge = ok
+      ? '<span style="color: #22c55e; font-weight: 700;">0 (OK)</span>'
+      : `<span style="color: #ef4444; font-weight: 800;">${diff > 0 ? '+' : ''}${formatRp(diff)} ⚠️</span>`;
+
+    antarHtml += `
+      <tr>
+        <td style="padding: 5px 8px; font-size: 11px; color: var(--text-main);">${escapeHtml(item.label)}</td>
+        <td style="padding: 3px 6px; text-align: right;">
+          <input type="text" class="custom-input antar-lpp-input" data-key="${item.key1}" value="${formatRp(v1)}"
+            style="width: 100%; height: 26px; text-align: right; font-size: 11px; padding: 2px 4px; background: rgba(0,0,0,0.25);">
+        </td>
+        <td style="padding: 3px 6px; text-align: right;">
+          <input type="text" class="custom-input antar-lpp-input" data-key="${item.key2}" value="${formatRp(v2)}"
+            style="width: 100%; height: 26px; text-align: right; font-size: 11px; padding: 2px 4px; background: rgba(0,0,0,0.25);">
+        </td>
+        <td style="padding: 5px 8px; text-align: right; font-size: 11px;">
+          ${diffBadge}
+        </td>
+      </tr>
+    `;
+  });
+
+  tbodyAntarLpp.innerHTML = antarHtml;
+
+  // Attach event listeners for real-time calculation
+  document.querySelectorAll('.kroscek-pem-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const key = e.target.getAttribute('data-key');
+      const num = parseInputNumber(e.target.value);
+      kroscekState.pembanding[key] = num;
+      e.target.value = formatRp(num);
+      renderKroscekTables();
+    });
+  });
+
+  document.querySelectorAll('.antar-lpp-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const key = e.target.getAttribute('data-key');
+      const num = parseInputNumber(e.target.value);
+      kroscekState.antarLpp[key] = num;
+      e.target.value = formatRp(num);
+      renderKroscekTables();
+    });
+  });
+
+  // Update Summary Banner status
+  if (statusKroscekSummary && bannerTidakBolehSelisih) {
+    if (totalSelisihCount === 0) {
+      statusKroscekSummary.innerHTML = '<span>●</span> SEMUA SESUAI (0 SELISIH)';
+      statusKroscekSummary.style.background = 'rgba(34, 197, 94, 0.2)';
+      statusKroscekSummary.style.color = '#22c55e';
+      statusKroscekSummary.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+      bannerTidakBolehSelisih.style.border = '2px dashed #f97316';
+      bannerTidakBolehSelisih.style.background = 'linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.05))';
+    } else {
+      statusKroscekSummary.innerHTML = `<span>⚠️</span> PERHATIAN: ${totalSelisihCount} ITEM BERSELISIH!`;
+      statusKroscekSummary.style.background = 'rgba(239, 68, 68, 0.3)';
+      statusKroscekSummary.style.color = '#ef4444';
+      statusKroscekSummary.style.border = '1px solid rgba(239, 68, 68, 0.6)';
+      bannerTidakBolehSelisih.style.border = '2px solid #ef4444';
+      bannerTidakBolehSelisih.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.1))';
+    }
+  }
+}
+
+// Button Sync Grand Total LPP 01
+if (btnSyncKroscekLpp01) {
+  btnSyncKroscekLpp01.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/ias/kroscek/sync-lpp01', { method: 'POST' });
+      const json = await res.json();
+      if (json.success && json.data) {
+        kroscekState = json.data;
+        renderKroscekTables();
+        showAlert('success', 'Sinkronisasi Berhasil', 'Nilai Grand Total Register LPP 01 berhasil dimasukkan ke kolom hijau.');
+      } else {
+        showAlert('error', 'Gagal Sinkronisasi', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    }
+  });
+}
+
+// Button Save Kroscek Data
+if (btnSaveKroscek) {
+  btnSaveKroscek.addEventListener('click', async () => {
+    if (!kroscekState) return;
+    try {
+      const res = await fetch('/api/ias/kroscek/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(kroscekState)
+      });
+      const json = await res.json();
+      if (json.success) {
+        showAlert('success', 'Kroscek Disimpan', 'Nilai lembar kroscek berhasil disimpan ke sistem.');
+      } else {
+        showAlert('error', 'Gagal Menyimpan', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    }
+  });
+}
+
 // Initial Load
 initTheme();
 initAdminNav();
@@ -1648,6 +1893,7 @@ populateDefaultDates();
 loadConfig();
 loadIasConfig();
 loadLatestRegisterLpp();
+loadKroscekData();
 
 // Poll Live Logs (Terpisah: CMS StokPoin vs Web IAS)
 setInterval(fetchLogs, 1500);

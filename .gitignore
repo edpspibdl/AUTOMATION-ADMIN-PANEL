@@ -3,4 +3,5 @@ node_modules/
 session.json
 config.json
 data_register_lpp.json
+data_kroscek_lpp.json
 *.png
