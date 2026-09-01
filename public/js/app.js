@@ -1845,6 +1845,41 @@ function renderKroscekTables() {
   }
 }
 
+const btnFetchPrevLpp = document.getElementById('btnFetchPrevLpp');
+
+// Button Fetch LPP Bulan Sebelumnya
+if (btnFetchPrevLpp) {
+  btnFetchPrevLpp.addEventListener('click', async () => {
+    const origText = btnFetchPrevLpp.innerHTML;
+    btnFetchPrevLpp.disabled = true;
+    btnFetchPrevLpp.innerHTML = '<span>⏳</span> Mengambil LPP...';
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    addIasLog('info', `📅 Memulai penarikan LPP Bulan Sebelumnya berdasarkan tanggal ${p1}...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-prev-lpp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, menu: 'LPP01' })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        showAlert('success', 'LPP Bulan Lalu Ditemukan', `Saldo Akhir LPP (${json.prevPeriode}): Rp ${json.saldoAkhirRp} berhasil dimasukkan ke kolom pembanding.`);
+      } else {
+        showAlert('error', 'Gagal Menarik LPP', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchPrevLpp.disabled = false;
+      btnFetchPrevLpp.innerHTML = origText;
+    }
+  });
+}
+
 // Button Sync Grand Total LPP 01
 if (btnSyncKroscekLpp01) {
   btnSyncKroscekLpp01.addEventListener('click', async () => {

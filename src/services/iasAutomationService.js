@@ -979,25 +979,30 @@ class IasAutomationService {
         summaries
       };
 
-      // Simpan ke file data_register_lpp.json
-      const savePath = path.join(__dirname, '../../data_register_lpp.json');
-      fs.writeFileSync(savePath, JSON.stringify(resultPayload, null, 2));
+      // Simpan ke file data_register_lpp.json atau data_register_lpp_prev.json
+      if (opts && opts.isPrevMonth) {
+        const savePrevPath = path.join(__dirname, '../../data_register_lpp_prev.json');
+        fs.writeFileSync(savePrevPath, JSON.stringify(resultPayload, null, 2));
+      } else {
+        const savePath = path.join(__dirname, '../../data_register_lpp.json');
+        fs.writeFileSync(savePath, JSON.stringify(resultPayload, null, 2));
 
-      // Update config.json dengan summary eksekusi
-      if (fs.existsSync(this.configFile)) {
-        const raw = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
-        raw.lastRegisterLppRun = {
-          time: resultPayload.time,
-          periode: `${p1} s/d ${p2}`,
-          menu,
-          totalCategories: categories.length,
-          saldoAwalRp: grandTotal?.saldoAwal?.rp || '0',
-          saldoAwalQty: grandTotal?.saldoAwal?.qty || '0',
-          penjualan: grandTotal?.penjualan || '0',
-          saldoAkhirRp: grandTotal?.saldoAkhir?.rp || '0',
-          saldoAkhirQty: grandTotal?.saldoAkhir?.qty || '0'
-        };
-        fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
+        // Update config.json dengan summary eksekusi
+        if (fs.existsSync(this.configFile)) {
+          const raw = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+          raw.lastRegisterLppRun = {
+            time: resultPayload.time,
+            periode: `${p1} s/d ${p2}`,
+            menu,
+            totalCategories: categories.length,
+            saldoAwalRp: grandTotal?.saldoAwal?.rp || '0',
+            saldoAwalQty: grandTotal?.saldoAwal?.qty || '0',
+            penjualan: grandTotal?.penjualan || '0',
+            saldoAkhirRp: grandTotal?.saldoAkhir?.rp || '0',
+            saldoAkhirQty: grandTotal?.saldoAkhir?.qty || '0'
+          };
+          fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
+        }
       }
 
       addLog('success', `[IAS] ✅ [REGISTER LPP] Sukses mengekstrak ${categories.length} kategori, ${summaries.length} subtotal, dan Grand Total (Saldo Awal: Rp ${grandTotal?.saldoAwal?.rp || 0}, Saldo Akhir: Rp ${grandTotal?.saldoAkhir?.rp || 0})!`);
@@ -1156,6 +1161,60 @@ class IasAutomationService {
     addLog('success', `[IAS] 🔄 Sinkronisasi nilai Grand Total LPP 01 ke Template Kroscek berhasil (Saldo: Rp ${gt.saldoAwal?.rp || 0})`);
 
     return data;
+  }
+
+  async fetchLppBulanSebelumnya(opts = {}) {
+    const p1 = opts.periode1 || '01/09/2026';
+    const menu = opts.menu || 'LPP01';
+
+    // Parse DD/MM/YYYY
+    const parts = p1.split('/');
+    const day = parseInt(parts[0] || '1', 10);
+    const month = parseInt(parts[1] || '9', 10);
+    const year = parseInt(parts[2] || '2026', 10);
+
+    let prevMonth = month - 1;
+    let prevYear = year;
+    if (prevMonth < 1) {
+      prevMonth = 12;
+      prevYear = year - 1;
+    }
+
+    const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+    const prevP1 = `01/${String(prevMonth).padStart(2, '0')}/${prevYear}`;
+    const prevP2 = `${String(lastDay).padStart(2, '0')}/${String(prevMonth).padStart(2, '0')}/${prevYear}`;
+
+    addLog('info', `[IAS] 📅 Mengambil LPP Bulan Sebelumnya (${menu}, Periode: ${prevP1} s/d ${prevP2})...`);
+
+    // Fetch and parse using fetchAndParseRegisterLPP
+    const res = await this.fetchAndParseRegisterLPP({
+      menu,
+      export_type: 'pdf',
+      periode1: prevP1,
+      periode2: prevP2,
+      tipe: '3',
+      isPrevMonth: true
+    });
+
+    const gt = res.grandTotal;
+    const saldoAkhirPrev = gt && gt.saldoAkhir?.rp ? parseInt(String(gt.saldoAkhir.rp).replace(/,/g, '').trim(), 10) : 0;
+
+    // Update kroscek data
+    const kData = this.getKroscekData();
+    kData.lpp01.saldoAkhirSebelumME = saldoAkhirPrev;
+    kData.pembanding.saldoAkhirSebelumME = saldoAkhirPrev;
+    kData.antarLpp.lpp01_prev = saldoAkhirPrev;
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ Saldo Akhir LPP Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${gt?.saldoAkhir?.rp || 0}`);
+
+    return {
+      success: true,
+      prevPeriode: `${prevP1} s/d ${prevP2}`,
+      saldoAkhirRp: gt?.saldoAkhir?.rp || '0',
+      saldoAkhirNum: saldoAkhirPrev,
+      kroscekData: kData
+    };
   }
 }
 

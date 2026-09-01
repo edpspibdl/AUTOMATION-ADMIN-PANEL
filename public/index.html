@@ -612,9 +612,12 @@
               <h2 style="font-size: 15px; margin: 0;">Kroscek Data Laporan LPP (Posisi & Mutasi Persediaan)</h2>
               <span class="badge badge-success" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">SOP Month-End (ME)</span>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-outline" id="btnFetchPrevLpp" title="Tarik Saldo Akhir LPP Bulan Sebelumnya dari Web IAS">
+                <span>📅</span> LPP Bulan Lalu
+              </button>
               <button type="button" class="btn btn-sm btn-outline" id="btnSyncKroscekLpp01" title="Tarik Grand Total LPP 01 otomatis ke kolom hijau">
-                <span>🔄</span> Sinkron Data LPP 01
+                <span>🔄</span> Sinkron LPP 01
               </button>
               <button type="button" class="btn btn-sm btn-primary" id="btnSaveKroscek">
                 <span>💾</span> Simpan Kroscek
