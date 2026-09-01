@@ -11,7 +11,8 @@ const SESSION_FILE = path.join(__dirname, '../../session.json');
 async function loginAndSaveSession(headless = true) {
   const email = process.env.CMS_EMAIL;
   const password = process.env.CMS_PASSWORD;
-  const baseUrl = process.env.CMS_URL || 'https://cms.stokpoin.com';
+  const rawUrl = process.env.CMS_URL || 'https://cms.stokpoin.com';
+  const baseUrl = rawUrl.replace(/\/+$/, '').replace(/\/login$/i, '');
 
   if (!email || !password) {
     throw new Error('CMS_EMAIL atau CMS_PASSWORD belum diset di file .env');

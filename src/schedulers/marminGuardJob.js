@@ -49,26 +49,30 @@ async function executeMarminGuard(triggerSource = 'Auto-Guard (5 Menit)') {
     let deactivatedCount = 0;
     for (const item of items) {
       const plu = item.plu;
-      addLog('info', `🔍 [MARMIN] Mencari PLU: ${plu} (${item.deskripsi})...`);
-      const stockItems = await searchStockApi({ plu });
+      try {
+        addLog('info', `🔍 [MARMIN] Mencari PLU: ${plu} (${item.deskripsi})...`);
+        const stockItems = await searchStockApi({ plu });
 
-      if (!stockItems || stockItems.length === 0) {
-        addLog('warning', `⚠️ [MARMIN] PLU ${plu} tidak ditemukan di database CMS.`);
-        continue;
-      }
-
-      for (const s of stockItems) {
-        const flag = (s.flag || '').toLowerCase().trim();
-        const desc = s.long_description || s.name || item.deskripsi;
-
-        if (flag.includes('aktif') && !flag.includes('non')) {
-          addLog('info', `⚡ [MARMIN] Menonaktifkan ID ${s.id} (${plu} - ${desc})...`);
-          await toggleStockApi(s.id);
-          addLog('success', `✅ [MARMIN] BERHASIL DINONAKTIFKAN: PLU ${plu} (${desc})`);
-          deactivatedCount++;
-        } else {
-          addLog('info', `⏭️ [MARMIN] PLU ${plu} sudah dalam status [${flag.toUpperCase()}].`);
+        if (!stockItems || stockItems.length === 0) {
+          addLog('warning', `⚠️ [MARMIN] PLU ${plu} tidak ditemukan di database CMS.`);
+          continue;
         }
+
+        for (const s of stockItems) {
+          const flag = (s.flag || '').toLowerCase().trim();
+          const desc = s.long_description || s.name || item.deskripsi;
+
+          if (flag.includes('aktif') && !flag.includes('non')) {
+            addLog('info', `⚡ [MARMIN] Menonaktifkan ID ${s.id} (${plu} - ${desc})...`);
+            await toggleStockApi(s.id);
+            addLog('success', `✅ [MARMIN] BERHASIL DINONAKTIFKAN: PLU ${plu} (${desc})`);
+            deactivatedCount++;
+          } else {
+            addLog('info', `⏭️ [MARMIN] PLU ${plu} sudah dalam status [${flag.toUpperCase()}].`);
+          }
+        }
+      } catch (itemErr) {
+        addLog('error', `❌ [MARMIN] Gagal memproses PLU ${plu}: ${itemErr.message}`);
       }
     }
 

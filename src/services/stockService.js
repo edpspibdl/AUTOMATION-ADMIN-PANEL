@@ -2,7 +2,8 @@ const fs = require('fs');
 const { loginAndSaveSession, loadSavedSession, SESSION_FILE } = require('./authService');
 require('dotenv').config();
 
-const BASE_URL = process.env.CMS_URL || 'https://cms.stokpoin.com';
+const rawUrl = process.env.CMS_URL || 'https://cms.stokpoin.com';
+const BASE_URL = rawUrl.replace(/\/+$/, '').replace(/\/login$/i, '');
 
 function getCookieHeader(cookies) {
   return cookies.map(c => `${c.name}=${c.value}`).join('; ');
@@ -31,7 +32,8 @@ async function ensureValidSession(retryCount = 0) {
       redirect: 'manual'
     });
 
-    if (res.status === 302 || res.status === 401 || res.status === 419) {
+    // Jika 302 / 401 / 419 / 0 (opaque redirect) -> session sudah expired
+    if (res.status === 302 || res.status === 401 || res.status === 419 || res.status === 0) {
       if (retryCount >= 2) throw new Error('Gagal relogin ke CMS setelah 2 percobaan.');
       console.log(`[STOCK SERVICE] Session expired (status: ${res.status}). Relogin otomatis...`);
       await loginAndSaveSession(true);
@@ -41,7 +43,7 @@ async function ensureValidSession(retryCount = 0) {
     return session;
   } catch (err) {
     if (retryCount < 2) {
-      console.log(`[STOCK SERVICE] Relogin ulang karena network error: ${err.message}`);
+      console.log(`[STOCK SERVICE] Relogin ulang karena network error/expired: ${err.message}`);
       await loginAndSaveSession(true);
       return await ensureValidSession(retryCount + 1);
     }
@@ -52,7 +54,7 @@ async function ensureValidSession(retryCount = 0) {
 /**
  * Mencari data stock berdasarkan PLU di CMS StokPoin DataTables API
  */
-async function searchStockApi({ desc = '', plu = '', status = '' }) {
+async function searchStockApi({ desc = '', plu = '', status = '' }, retryCount = 0) {
   const session = await ensureValidSession();
   const cookieHeader = getCookieHeader(session.cookies);
 
@@ -67,6 +69,12 @@ async function searchStockApi({ desc = '', plu = '', status = '' }) {
   });
 
   if (!res.ok) {
+    // Jika 404/401/403/500 terjadi karena session invalid, relogin sekali lagi
+    if ((res.status === 404 || res.status === 401 || res.status === 403) && retryCount === 0) {
+      console.log(`[STOCK SERVICE] HTTP ${res.status} saat search PLU ${plu}. Melakukan force relogin & retry...`);
+      await loginAndSaveSession(true);
+      return await searchStockApi({ desc, plu, status }, retryCount + 1);
+    }
     throw new Error(`DataTables API search error: HTTP ${res.status}`);
   }
 
@@ -77,7 +85,7 @@ async function searchStockApi({ desc = '', plu = '', status = '' }) {
 /**
  * Melakukan toggle status item stock secara instan (< 1 detik) melalui HTTP API endpoint
  */
-async function toggleStockApi(stockId) {
+async function toggleStockApi(stockId, retryCount = 0) {
   const session = await ensureValidSession();
   const cookieHeader = getCookieHeader(session.cookies);
 
@@ -92,6 +100,11 @@ async function toggleStockApi(stockId) {
   });
 
   if (!res.ok) {
+    if ((res.status === 404 || res.status === 401 || res.status === 403) && retryCount === 0) {
+      console.log(`[STOCK SERVICE] HTTP ${res.status} saat toggle Stock ID ${stockId}. Melakukan force relogin & retry...`);
+      await loginAndSaveSession(true);
+      return await toggleStockApi(stockId, retryCount + 1);
+    }
     throw new Error(`Toggle API error: HTTP ${res.status}`);
   }
 
