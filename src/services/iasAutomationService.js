@@ -383,25 +383,37 @@ class IasAutomationService {
       await page.goto(`${baseUrl}/bo/proses/hitungulangstock`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(2000);
 
-      // Read or fill parameters
-      let p1 = opts.periode1;
-      let p2 = opts.periode2;
-      if (!p1) p1 = await page.$eval('#periode1', el => el.value);
-      if (!p2) p2 = await page.$eval('#periode2', el => el.value);
-
-      if (opts.periode1) await page.fill('#periode1', opts.periode1);
-      if (opts.periode2) await page.fill('#periode2', opts.periode2);
-
+      // Read or fill parameters safely without readonly errors
+      let p1 = (opts.periode1 || '').trim();
+      let p2 = (opts.periode2 || '').trim();
       let plu1 = (opts.plu1 || '').trim();
       let plu2 = (opts.plu2 || '').trim();
-      if (plu1) {
-        plu1 = plu1.padStart(7, '0');
-        await page.fill('#plu1', plu1);
-      }
-      if (plu2) {
-        plu2 = plu2.padStart(7, '0');
-        await page.fill('#plu2', plu2);
-      }
+      if (plu1) plu1 = plu1.padStart(7, '0');
+      if (plu2) plu2 = plu2.padStart(7, '0');
+
+      await page.evaluate(({ p1Val, p2Val, plu1Val, plu2Val }) => {
+        if (p1Val) {
+          const el1 = document.querySelector('#periode1');
+          if (el1) { el1.removeAttribute('readonly'); el1.value = p1Val; }
+          if (window.$) $('#periode1').val(p1Val).trigger('change');
+        }
+        if (p2Val) {
+          const el2 = document.querySelector('#periode2');
+          if (el2) { el2.removeAttribute('readonly'); el2.value = p2Val; }
+          if (window.$) $('#periode2').val(p2Val).trigger('change');
+        }
+        if (plu1Val) {
+          if (window.$) $('#plu1').val(plu1Val).trigger('change');
+          else { const el = document.querySelector('#plu1'); if (el) el.value = plu1Val; }
+        }
+        if (plu2Val) {
+          if (window.$) $('#plu2').val(plu2Val).trigger('change');
+          else { const el = document.querySelector('#plu2'); if (el) el.value = plu2Val; }
+        }
+      }, { p1Val: p1, p2Val: p2, plu1Val: plu1, plu2Val: plu2 });
+
+      if (!p1) p1 = await page.$eval('#periode1', el => el.value).catch(() => '');
+      if (!p2) p2 = await page.$eval('#periode2', el => el.value).catch(() => '');
 
       addLog('info', `[IAS] [TASK HITSTOK] Menjalankan proses hitung stok untuk Periode ${p1} s/d ${p2} (PLU: ${plu1 || 'SEMUA PLU'})...`);
 
@@ -537,14 +549,25 @@ class IasAutomationService {
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(2000);
 
-      // Read or fill parameters
-      let p1 = opts.periode1;
-      let p2 = opts.periode2;
-      if (!p1) p1 = await page.$eval('#periode1', el => el.value);
-      if (!p2) p2 = await page.$eval('#periode2', el => el.value);
+      // Read or fill parameters safely without readonly errors
+      let p1 = (opts.periode1 || '').trim();
+      let p2 = (opts.periode2 || '').trim();
 
-      if (opts.periode1) await page.fill('#periode1', opts.periode1);
-      if (opts.periode2) await page.fill('#periode2', opts.periode2);
+      await page.evaluate(({ p1Val, p2Val }) => {
+        if (p1Val) {
+          const el1 = document.querySelector('#periode1');
+          if (el1) { el1.removeAttribute('readonly'); el1.value = p1Val; }
+          if (window.$) $('#periode1').val(p1Val).trigger('change');
+        }
+        if (p2Val) {
+          const el2 = document.querySelector('#periode2');
+          if (el2) { el2.removeAttribute('readonly'); el2.value = p2Val; }
+          if (window.$) $('#periode2').val(p2Val).trigger('change');
+        }
+      }, { p1Val: p1, p2Val: p2 });
+
+      if (!p1) p1 = await page.$eval('#periode1', el => el.value).catch(() => '');
+      if (!p2) p2 = await page.$eval('#periode2', el => el.value).catch(() => '');
 
       let tanggalSo = opts.tanggalSo;
       if (isHarian) {
