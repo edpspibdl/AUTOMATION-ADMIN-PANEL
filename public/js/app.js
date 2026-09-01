@@ -21,6 +21,37 @@ let currentConfig = {
 
 // Main Elements
 const liveClock = document.getElementById('liveClock');
+const btnThemeToggle = document.getElementById('btnThemeToggle');
+const themeIcon = document.getElementById('themeIcon');
+const themeText = document.getElementById('themeText');
+
+// Theme Management (Light / Dark)
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  if (theme === 'light') {
+    if (themeIcon) themeIcon.textContent = '☀️';
+    if (themeText) themeText.textContent = 'Light';
+  } else {
+    if (themeIcon) themeIcon.textContent = '🌙';
+    if (themeText) themeText.textContent = 'Dark';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+}
+
+if (btnThemeToggle) {
+  btnThemeToggle.addEventListener('click', toggleTheme);
+}
 
 // Auto-Guard Marmin Elements
 const toggleMarminGuard = document.getElementById('toggleMarminGuard');
@@ -678,6 +709,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Initial Load
+initTheme();
 loadConfig();
 setInterval(fetchLogs, 1500);
 fetchLogs();
