@@ -416,9 +416,10 @@
           <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div>
               <div class="card-header" style="padding: 14px 18px;">
-                <div class="card-title-group">
+                <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
                   <span class="card-icon" style="font-size: 18px;">📦</span>
-                  <h2 style="font-size: 15px;">Hitung Ulang Stock (Hitstok)</h2>
+                  <h2 style="font-size: 15px; margin: 0;">Hitung Ulang Stock (Hitstok)</h2>
+                  <span class="badge badge-info" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">2x Putaran SOP</span>
                 </div>
                 <span class="task-badge-live task-badge-done" id="badgeHitstokStatus">
                   <span>●</span> DONE
@@ -426,7 +427,7 @@
               </div>
               <div class="card-body" style="padding: 16px 18px;">
                 <p class="section-desc" style="font-size: 12px; margin-bottom: 12px;">
-                  Menjalankan hitung ulang stock di <code>/bo/proses/hitungulangstock</code> sesuai periode aktif di atas.
+                  Menjalankan hitung ulang stock di <code>/bo/proses/hitungulangstock</code> sebanyak 2 putaran sesuai SOP Indogrosir.
                 </p>
 
                 <!-- Filter PLU (Clean 1 Row) -->
@@ -467,7 +468,7 @@
             <!-- Action Button -->
             <div style="padding: 14px 18px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
               <button class="btn btn-primary" id="btnRunHitstok" style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
-                <span>⚡</span> Jalankan Hitstok Sekarang
+                <span>⚡</span> Jalankan Hitstok (2x Putaran)
               </button>
               <button class="btn btn-outline" id="btnCheckHitstokStatus" style="height: 38px; padding: 0 14px;" title="Periksa Status Terkini">
                 <span>🔄</span>
@@ -479,9 +480,10 @@
           <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
             <div>
               <div class="card-header" style="padding: 14px 18px;">
-                <div class="card-title-group">
+                <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
                   <span class="card-icon" style="font-size: 18px;">📑</span>
-                  <h2 style="font-size: 15px;">Proses LPP (Bulanan)</h2>
+                  <h2 style="font-size: 15px; margin: 0;">Proses LPP (Bulanan)</h2>
+                  <span class="badge badge-info" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">2x Putaran SOP</span>
                 </div>
                 <span class="task-badge-live task-badge-done" id="badgeLppStatus">
                   <span>●</span> DONE
@@ -489,7 +491,7 @@
               </div>
               <div class="card-body" style="padding: 16px 18px;">
                 <p class="section-desc" style="font-size: 12px; margin-bottom: 12px;">
-                  Menjalankan proses LPP Bulanan di <code>/bo/lpp/proses-lpp</code> untuk semua cabang pada periode aktif.
+                  Menjalankan proses LPP Bulanan di <code>/bo/lpp/proses-lpp</code> sebanyak 2 putaran sesuai SOP Indogrosir.
                 </p>
 
                 <!-- Highlight Periode Aktif Target -->
@@ -525,7 +527,7 @@
             <!-- Action Button -->
             <div style="padding: 14px 18px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
               <button class="btn btn-primary" id="btnRunLpp" style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
-                <span>⚡</span> Jalankan Proses LPP Sekarang
+                <span>⚡</span> Jalankan Proses LPP (2x Putaran)
               </button>
               <button class="btn btn-outline" id="btnCheckLppStatus" style="height: 38px; padding: 0 14px;" title="Periksa Status Terkini">
                 <span>🔄</span>

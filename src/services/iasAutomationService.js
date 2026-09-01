@@ -365,15 +365,16 @@ class IasAutomationService {
 
   /**
    * TASK 1: Run Hitung Ulang Stock
-   * @param {Object} opts { periode1, periode2, plu1, plu2, updateOnlineStock }
+   * @param {Object} opts { periode1, periode2, plu1, plu2, updateOnlineStock, iterations }
    */
   async runHitungUlangStock(opts = {}) {
     if (this.activeTask) {
       throw new Error(`Saat ini sedang berjalan tugas: ${this.activeTask}. Mohon tunggu hingga selesai.`);
     }
 
-    this.activeTask = 'HITSTOK';
+    this.activeTask = 'HITUNG_ULANG_STOCK';
     let session = null;
+    const totalPasses = opts.iterations || 2;
 
     try {
       session = await this.createSession();
@@ -415,44 +416,21 @@ class IasAutomationService {
       if (!p1) p1 = await page.$eval('#periode1', el => el.value).catch(() => '');
       if (!p2) p2 = await page.$eval('#periode2', el => el.value).catch(() => '');
 
-      addLog('info', `[IAS] [TASK HITSTOK] Menjalankan proses hitung stok untuk Periode ${p1} s/d ${p2} (PLU: ${plu1 || 'SEMUA PLU'})...`);
+      addLog('info', `[IAS] [TASK HITSTOK] Menjalankan proses hitung stok untuk Periode ${p1} s/d ${p2} (PLU: ${plu1 || 'SEMUA PLU'}, Total ${totalPasses} Putaran)...`);
 
-      // Trigger POST hitung-ulang-stock
-      const triggerResult = await page.evaluate(async ({ p1, p2, plu1, plu2 }) => {
-        return new Promise((resolve) => {
-          $.ajax({
-            url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock',
-            type: 'post',
-            data: {
-              periode1: p1,
-              periode2: p2,
-              plu1: plu1,
-              plu2: plu2
-            },
-            success: (res) => resolve({ ok: true, res }),
-            error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
-            timeout: 30000
-          });
-        });
-      }, { p1, p2, plu1, plu2 });
-
-      addLog('info', `[IAS] [TASK HITSTOK] Respon pemicu hitung stok: ${JSON.stringify(triggerResult.res || triggerResult.error)}`);
-
-      // Polling status until DONE (max 90 seconds)
-      addLog('info', `[IAS] [TASK HITSTOK] Memantau proses hitung stok hingga berstatus DONE...`);
-      let isDone = false;
-      let checkAttempts = 0;
       let lastData = null;
+      let isDoneAll = false;
 
-      while (!isDone && checkAttempts < 30) {
-        checkAttempts++;
-        await page.waitForTimeout(3000);
+      for (let pass = 1; pass <= totalPasses; pass++) {
+        addLog('info', `[IAS] [TASK HITSTOK] 🔄 Memulai Putaran ${pass}/${totalPasses}...`);
 
-        const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+        // Reset / proses-ulang if previously DONE
+        await page.evaluate(async ({ p1, p2 }) => {
           return new Promise((resolve) => {
+            if (typeof ajaxSetup === 'function') ajaxSetup();
             $.ajax({
-              url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
-              type: 'get',
+              url: 'http://172.31.146.190/bo/proses/hitungulangstock/proses-ulang',
+              type: 'post',
               data: { periode1: p1, periode2: p2 },
               success: (res) => resolve(res),
               error: () => resolve(null)
@@ -460,45 +438,115 @@ class IasAutomationService {
           });
         }, { p1, p2 });
 
-        if (pollRes && Array.isArray(pollRes.data)) {
-          lastData = pollRes.data;
-          const statuses = pollRes.data.map(d => `${d.submenu}: ${d.status}`);
-          addLog('info', `[IAS] [TASK HITSTOK] Status check #${checkAttempts}: ${statuses.join(' | ')}`);
-
-          const allDone = pollRes.data.every(d => d.status === 'DONE');
-          if (allDone) {
-            isDone = true;
-            break;
-          }
-        }
-      }
-
-      // Optional: UPDATE ONLINE STOCK SPI
-      let onlineStockResult = null;
-      if (opts.updateOnlineStock) {
-        addLog('info', `[IAS] [TASK HITSTOK] Memicu UPDATE ONLINE STOCK SPI...`);
-        onlineStockResult = await page.evaluate(async () => {
+        // Trigger Step 1: Hitung Ulang Stock
+        addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Memicu Step 1: Hitung Ulang Stock...`);
+        const step1Res = await page.evaluate(async ({ p1, p2, plu1, plu2 }) => {
           return new Promise((resolve) => {
+            if (typeof ajaxSetup === 'function') ajaxSetup();
             $.ajax({
-              url: 'http://172.31.146.190/bo/proses/hitungulangstock/update-online-stock-spi',
+              url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock',
               type: 'post',
-              success: (res) => resolve(res),
-              error: (err) => resolve({ error: err.statusText })
+              data: { periode1: p1, periode2: p2, plu1: plu1, plu2: plu2 },
+              success: (res) => resolve({ ok: true, res }),
+              error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
+              timeout: 30000
             });
           });
-        });
-        addLog('info', `[IAS] [TASK HITSTOK] Respon Update Online Stock SPI: ${JSON.stringify(onlineStockResult)}`);
+        }, { p1, p2, plu1, plu2 });
+
+        addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Respon Step 1: ${JSON.stringify(step1Res.res || step1Res.error)}`);
+
+        // Trigger Step 2: Hitung Ulang Stock CMO
+        addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Memicu Step 2: Hitung Ulang Stock CMO...`);
+        const step2Res = await page.evaluate(async ({ p1, p2, plu1, plu2 }) => {
+          return new Promise((resolve) => {
+            if (typeof ajaxSetup === 'function') ajaxSetup();
+            $.ajax({
+              url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock-cmo',
+              type: 'post',
+              data: { periode1: p1, periode2: p2, plu1: plu1, plu2: plu2 },
+              success: (res) => resolve({ ok: true, res }),
+              error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
+              timeout: 30000
+            });
+          });
+        }, { p1, p2, plu1, plu2 });
+
+        addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Respon Step 2: ${JSON.stringify(step2Res.res || step2Res.error)}`);
+
+        // Polling status until DONE (max 90 seconds)
+        addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Memantau proses hitung stok hingga berstatus DONE...`);
+        let isDone = false;
+        let checkAttempts = 0;
+
+        while (!isDone && checkAttempts < 30) {
+          checkAttempts++;
+          await page.waitForTimeout(3000);
+
+          const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+            return new Promise((resolve) => {
+              if (typeof ajaxSetup === 'function') ajaxSetup();
+              $.ajax({
+                url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
+                type: 'get',
+                data: { periode1: p1, periode2: p2 },
+                success: (res) => resolve(res),
+                error: () => resolve(null)
+              });
+            });
+          }, { p1, p2 });
+
+          if (pollRes && Array.isArray(pollRes.data)) {
+            lastData = pollRes.data;
+            const statuses = pollRes.data.map(d => `${d.submenu}: ${d.status}`);
+            addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Status check #${checkAttempts}: ${statuses.join(' | ')}`);
+
+            const allDone = pollRes.data.every(d => d.status === 'DONE');
+            if (allDone) {
+              isDone = true;
+              break;
+            }
+          }
+        }
+
+        // Optional: UPDATE ONLINE STOCK SPI
+        if (opts.updateOnlineStock) {
+          addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Memicu UPDATE ONLINE STOCK SPI...`);
+          const onlineStockResult = await page.evaluate(async () => {
+            return new Promise((resolve) => {
+              if (typeof ajaxSetup === 'function') ajaxSetup();
+              $.ajax({
+                url: 'http://172.31.146.190/bo/proses/hitungulangstock/update-online-stock-spi',
+                type: 'post',
+                success: (res) => resolve(res),
+                error: (err) => resolve({ error: err.statusText })
+              });
+            });
+          });
+          addLog('info', `[IAS] [TASK HITSTOK] [Putaran ${pass}/${totalPasses}] Respon Update Online Stock SPI: ${JSON.stringify(onlineStockResult)}`);
+        }
+
+        if (isDone) {
+          addLog('success', `[IAS] [TASK HITSTOK] ✅ Putaran ${pass}/${totalPasses} Selesai!`);
+        }
+
+        if (pass === totalPasses) {
+          isDoneAll = isDone;
+        } else {
+          await page.waitForTimeout(2000);
+        }
       }
 
       // Save execution info
       const nowStr = new Date().toLocaleString('id-ID');
       const execRecord = {
         time: nowStr,
-        status: isDone ? 'DONE' : 'TIMEOUT_WAITING',
+        status: isDoneAll ? 'DONE' : 'TIMEOUT_WAITING',
         periode: `${p1} s/d ${p2}`,
         pluRange: plu1 ? `${plu1} s/d ${plu2 || plu1}` : 'SEMUA',
         onlineStockUpdated: !!opts.updateOnlineStock,
-        details: lastData
+        details: lastData,
+        passesCompleted: totalPasses
       };
 
       if (fs.existsSync(this.configFile)) {
@@ -507,7 +555,7 @@ class IasAutomationService {
         fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
       }
 
-      addLog('success', `[IAS] ✅ [TASK HITSTOK] Selesai dengan status: ${execRecord.status}!`);
+      addLog('success', `[IAS] 🎉 [TASK HITSTOK] Selesai ${totalPasses} Putaran dengan status: ${execRecord.status}!`);
       return {
         success: true,
         ...execRecord
@@ -526,7 +574,8 @@ class IasAutomationService {
 
   /**
    * TASK 2: Run Proses LPP (Bulanan atau Harian)
-   * @param {Object} opts { mode: 'bulanan' | 'harian', periode1, periode2, tanggalSo, khususAudit }
+   * Dilakukan 2 putaran (2 passes) sesuai SOP
+   * @param {Object} opts { mode: 'bulanan' | 'harian', periode1, periode2, tanggalSo, khususAudit, iterations }
    */
   async runProsesLPP(opts = {}) {
     if (this.activeTask) {
@@ -535,6 +584,7 @@ class IasAutomationService {
 
     this.activeTask = 'PROSES_LPP';
     let session = null;
+    const totalPasses = opts.iterations || 2;
 
     try {
       session = await this.createSession();
@@ -578,41 +628,22 @@ class IasAutomationService {
         }
       }
 
-      addLog('info', `[IAS] [TASK LPP] Menjalankan ${isHarian ? 'LPP Harian' : 'LPP Bulanan'} untuk Periode ${p1} s/d ${p2}...`);
+      addLog('info', `[IAS] [TASK LPP] Menjalankan ${isHarian ? 'LPP Harian' : 'LPP Bulanan'} untuk Periode ${p1} s/d ${p2} (Total: ${totalPasses} Putaran)...`);
 
       let lastStatusData = null;
-      let isDone = false;
+      let isDoneAll = false;
 
       if (!isHarian) {
-        // Trigger POST proses LPP Bulanan
-        const triggerResult = await page.evaluate(async ({ p1, p2 }) => {
-          return new Promise((resolve) => {
-            $.ajax({
-              url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses',
-              type: 'post',
-              data: { periode1: p1, periode2: p2 },
-              success: (res) => resolve({ ok: true, res }),
-              error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
-              timeout: 30000
-            });
-          });
-        }, { p1, p2 });
+        for (let pass = 1; pass <= totalPasses; pass++) {
+          addLog('info', `[IAS] [TASK LPP] 🔄 Memulai Putaran ${pass}/${totalPasses}...`);
 
-        addLog('info', `[IAS] [TASK LPP] Respon pemicu LPP: ${JSON.stringify(triggerResult.res || triggerResult.error)}`);
-
-        // Polling status until DONE (max 90 seconds)
-        addLog('info', `[IAS] [TASK LPP] Memantau status proses LPP hingga selesai...`);
-        let checkAttempts = 0;
-
-        while (!isDone && checkAttempts < 30) {
-          checkAttempts++;
-          await page.waitForTimeout(3000);
-
-          const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+          // 1. Panggil proses-ulang untuk mereset status jika sebelumnya DONE
+          await page.evaluate(async ({ p1, p2 }) => {
             return new Promise((resolve) => {
+              if (typeof ajaxSetup === 'function') ajaxSetup();
               $.ajax({
-                url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
-                type: 'get',
+                url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses-ulang',
+                type: 'post',
                 data: { periode1: p1, periode2: p2 },
                 success: (res) => resolve(res),
                 error: () => resolve(null)
@@ -620,13 +651,63 @@ class IasAutomationService {
             });
           }, { p1, p2 });
 
-          if (pollRes && pollRes.data) {
-            lastStatusData = pollRes.data;
-            addLog('info', `[IAS] [TASK LPP] Status check #${checkAttempts}: ${pollRes.data.status} (Start: ${pollRes.data.start_time || '-'}, Finish: ${pollRes.data.end_time || '-'})`);
-            if (pollRes.data.status === 'DONE') {
-              isDone = true;
-              break;
+          // 2. Memicu POST proses LPP Bulanan
+          const triggerResult = await page.evaluate(async ({ p1, p2 }) => {
+            return new Promise((resolve) => {
+              if (typeof ajaxSetup === 'function') ajaxSetup();
+              $.ajax({
+                url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses',
+                type: 'post',
+                data: { periode1: p1, periode2: p2 },
+                success: (res) => resolve({ ok: true, res }),
+                error: (err) => resolve({ ok: false, error: err.statusText || 'Error request' }),
+                timeout: 30000
+              });
+            });
+          }, { p1, p2 });
+
+          addLog('info', `[IAS] [TASK LPP] [Putaran ${pass}/${totalPasses}] Respon pemicu LPP: ${JSON.stringify(triggerResult.res || triggerResult.error)}`);
+
+          // 3. Polling status until DONE (max 90 seconds)
+          addLog('info', `[IAS] [TASK LPP] [Putaran ${pass}/${totalPasses}] Memantau status proses LPP hingga selesai...`);
+          let checkAttempts = 0;
+          let isDone = false;
+
+          while (!isDone && checkAttempts < 30) {
+            checkAttempts++;
+            await page.waitForTimeout(3000);
+
+            const pollRes = await page.evaluate(async ({ p1, p2 }) => {
+              return new Promise((resolve) => {
+                if (typeof ajaxSetup === 'function') ajaxSetup();
+                $.ajax({
+                  url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
+                  type: 'get',
+                  data: { periode1: p1, periode2: p2 },
+                  success: (res) => resolve(res),
+                  error: () => resolve(null)
+                });
+              });
+            }, { p1, p2 });
+
+            if (pollRes && pollRes.data) {
+              lastStatusData = pollRes.data;
+              addLog('info', `[IAS] [TASK LPP] [Putaran ${pass}/${totalPasses}] Status check #${checkAttempts}: ${pollRes.data.status} (Start: ${pollRes.data.start_time || '-'}, Finish: ${pollRes.data.end_time || '-'})`);
+              if (pollRes.data.status === 'DONE') {
+                isDone = true;
+                break;
+              }
             }
+          }
+
+          if (isDone) {
+            addLog('success', `[IAS] [TASK LPP] ✅ Putaran ${pass}/${totalPasses} Selesai!`);
+          }
+
+          if (pass === totalPasses) {
+            isDoneAll = isDone;
+          } else {
+            await page.waitForTimeout(2000);
           }
         }
       } else {
@@ -639,7 +720,7 @@ class IasAutomationService {
         const swal = await page.$('.swal2-html-container, .swal-text');
         const alertMsg = swal ? await swal.innerText() : 'Proses laporan LPP Harian dikirim.';
         addLog('info', `[IAS] [TASK LPP HARIAN] Notifikasi: ${alertMsg.replace(/\n|\r/g, ' ')}`);
-        isDone = true;
+        isDoneAll = true;
         lastStatusData = { status: 'DONE', message: alertMsg };
       }
 
@@ -648,12 +729,13 @@ class IasAutomationService {
       const execRecord = {
         time: nowStr,
         mode: isHarian ? 'Harian' : 'Bulanan',
-        status: isDone ? 'DONE' : 'TIMEOUT_WAITING',
+        status: isDoneAll ? 'DONE' : 'TIMEOUT_WAITING',
         periode: `${p1} s/d ${p2}`,
         tanggalSo: tanggalSo || '-',
         startTime: lastStatusData?.start_time || '-',
         endTime: lastStatusData?.end_time || '-',
-        details: lastStatusData
+        details: lastStatusData,
+        passesCompleted: totalPasses
       };
 
       if (fs.existsSync(this.configFile)) {
@@ -662,7 +744,7 @@ class IasAutomationService {
         fs.writeFileSync(this.configFile, JSON.stringify(raw, null, 2));
       }
 
-      addLog('success', `[IAS] ✅ [TASK LPP] Selesai dengan status: ${execRecord.status}!`);
+      addLog('success', `[IAS] 🎉 [TASK LPP] Selesai ${totalPasses} Putaran dengan status: ${execRecord.status}!`);
       return {
         success: true,
         ...execRecord
