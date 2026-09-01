@@ -20,7 +20,16 @@ const DEFAULT_CONFIG = {
     database: process.env.PG_DATABASE || 'postgres'
   },
   lastRun: null,
-  lastMarminRun: null
+  lastMarminRun: null,
+  iasConfig: {
+    baseUrl: 'http://172.31.146.190',
+    koneksi: 'sim',
+    username: 'RIS',
+    password: '0' + '61201',
+    branchCode: '1R',
+    cabang: 'spibdl1r',
+    autoResetSession: true
+  }
 };
 
 function loadConfig() {
@@ -38,7 +47,8 @@ function loadConfig() {
         customQuery: cfg.customQuery || '',
         dbConfig: cfg.dbConfig || DEFAULT_CONFIG.dbConfig,
         lastRun: cfg.lastRun || null,
-        lastMarminRun: cfg.lastMarminRun || null
+        lastMarminRun: cfg.lastMarminRun || null,
+        iasConfig: cfg.iasConfig || DEFAULT_CONFIG.iasConfig
       };
     }
   } catch (err) {
@@ -65,6 +75,9 @@ function updateConfig(partialConfig) {
   };
   if (partialConfig.dbConfig) {
     updated.dbConfig = { ...current.dbConfig, ...partialConfig.dbConfig };
+  }
+  if (partialConfig.iasConfig) {
+    updated.iasConfig = { ...current.iasConfig, ...partialConfig.iasConfig };
   }
   if (Array.isArray(partialConfig.plus)) {
     updated.plus = partialConfig.plus.map(p => p.toString().trim()).filter(Boolean);

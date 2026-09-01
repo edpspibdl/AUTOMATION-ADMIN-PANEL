@@ -1,0 +1,982 @@
+[
+  {
+    "text": "Inquiry Produk Per Supplier",
+    "href": "http://172.31.146.190/inquery/prod-supp"
+  },
+  {
+    "text": "Inquiry Supplier Per Produk",
+    "href": "http://172.31.146.190/inquery/supp-prod"
+  },
+  {
+    "text": "Laporan Perbedaan Tag",
+    "href": "http://172.31.146.190/bo/kerjasamaigridm/lapbedatag"
+  },
+  {
+    "text": "Stock Out",
+    "href": "http://172.31.146.190/bo/kerjasamaigridm/stout"
+  },
+  {
+    "text": "LPP Minus",
+    "href": "http://172.31.146.190/bo/lpp/lpp-minus"
+  },
+  {
+    "text": "LPP Roll Foward",
+    "href": "http://172.31.146.190/bo/lpp/lpp-roll-foward"
+  },
+  {
+    "text": "LPP Roll Foward",
+    "href": "http://172.31.146.190/bo/lpp/lpp-roll-foward"
+  },
+  {
+    "text": "Proses LPP",
+    "href": "http://172.31.146.190/bo/lpp/proses-lpp"
+  },
+  {
+    "text": "Proses LPP Harian",
+    "href": "http://172.31.146.190/bo/lpp/proses-lpp-harian"
+  },
+  {
+    "text": "Register BA IDM",
+    "href": "http://172.31.146.190/bo/lpp/register-ba-idm"
+  },
+  {
+    "text": "Register LPP",
+    "href": "http://172.31.146.190/bo/lpp/register-lpp"
+  },
+  {
+    "text": "Daftar Aktivitas Pengiriman Supplier",
+    "href": "http://172.31.146.190/bo/laporan/daftar-aktivitas-pengiriman-supplier"
+  },
+  {
+    "text": "Daftar PB Yang Tidak Terdaftar PO",
+    "href": "http://172.31.146.190/bo/laporan/daftar-pb-yang-tidak-terdaftar-po"
+  },
+  {
+    "text": "Daftar Plu Belum PB",
+    "href": "http://172.31.146.190/bo/laporan/daftar-plu-belum-pb"
+  },
+  {
+    "text": "Laporan Biaya Barang Hilang Atau Rusak",
+    "href": "http://172.31.146.190/bo/laporan/laporan-biaya-barang-hilang-atau-rusak"
+  },
+  {
+    "text": "Laporan Bulanan Kedatangan Supplier BKL",
+    "href": "http://172.31.146.190/bo/laporan/kunjunganbkl"
+  },
+  {
+    "text": "Laporan Daftar Pembelian",
+    "href": "http://172.31.146.190/bo/laporan/daftar-pembelian"
+  },
+  {
+    "text": "Laporan Daftar Pemusnahan Barang",
+    "href": "http://172.31.146.190/bo/laporan/daftar-pemusnahan-barang"
+  },
+  {
+    "text": "Laporan Daftar Penerimaan Antar Cabang",
+    "href": "http://172.31.146.190/bo/laporan/penerimaan"
+  },
+  {
+    "text": "Laporan Daftar Pengiriman Antar Cabang",
+    "href": "http://172.31.146.190/bo/laporan/pengiriman"
+  },
+  {
+    "text": "Laporan Daftar Penyesuaian Persediaan",
+    "href": "http://172.31.146.190/bo/laporan/penyesuaian"
+  },
+  {
+    "text": "Laporan Daftar Retur Pembelian",
+    "href": "http://172.31.146.190/bo/laporan/daftar-retur-pembelian"
+  },
+  {
+    "text": "Laporan Discount 4",
+    "href": "http://172.31.146.190/bo/laporan/discount-4"
+  },
+  {
+    "text": "Laporan History Harga",
+    "href": "http://172.31.146.190/bo/laporan/laporan-history-harga"
+  },
+  {
+    "text": "Laporan Monitoring Expired Date",
+    "href": "http://172.31.146.190/bo/laporan/laporan-monitoring-expired-date"
+  },
+  {
+    "text": "Laporan Outstanding Scanning IDM / OMI",
+    "href": "http://172.31.146.190/bo/laporan/outsscan"
+  },
+  {
+    "text": "Laporan Pembentukan Outs IDM",
+    "href": "http://172.31.146.190/bo/laporan/laporan-outst-idm"
+  },
+  {
+    "text": "Laporan Sales & Stock",
+    "href": "http://172.31.146.190/bo/laporan/sales-dan-stock"
+  },
+  {
+    "text": "Laporan Service Level Item Pareto",
+    "href": "http://172.31.146.190/bo/laporan/servicelevelitempareto"
+  },
+  {
+    "text": "Laporan Service Level PO Thd BPB / DIV / DEPT / KATB",
+    "href": "http://172.31.146.190/bo/laporan/laporan-service-level-po-thd-bpb-div-dept-katb"
+  },
+  {
+    "text": "Laporan Service Level PO vs BTB",
+    "href": "http://172.31.146.190/bo/laporan/service-level-po-btb"
+  },
+  {
+    "text": "Laporan Transfer Satuan Produk Hot Beverages",
+    "href": "http://172.31.146.190/bo/laporan/saleshbv"
+  },
+  {
+    "text": "Monitoring Faktur Pajak SJ/NRB",
+    "href": "http://172.31.146.190/bo/laporan/monitoring-faktur-pajak-sj-nrb"
+  },
+  {
+    "text": "Edit PKM",
+    "href": "http://172.31.146.190/bo/pkm/edit-pkm"
+  },
+  {
+    "text": "Inquery Kertas Kerja PKM",
+    "href": "http://172.31.146.190/bo/pkm/entry-inquery"
+  },
+  {
+    "text": "Inquery Monitoring PLU Baru",
+    "href": "http://172.31.146.190/bo/pkm/monitoring"
+  },
+  {
+    "text": "Inquery Tabel Gondola",
+    "href": "http://172.31.146.190/bo/pkm/inquery-tabel-gondola"
+  },
+  {
+    "text": "Laporan Kertas Kerja PKM",
+    "href": "http://172.31.146.190/bo/pkm/laporan-kertas-kerja-pkm"
+  },
+  {
+    "text": "Proses Kertas Kerja PKM",
+    "href": "http://172.31.146.190/bo/pkm/kertas-kerja"
+  },
+  {
+    "text": "Update PKM Item Procurement",
+    "href": "http://172.31.146.190/bo/pkm/update-pkm-item"
+  },
+  {
+    "text": "Status",
+    "href": "http://172.31.146.190/bo/naik-turun-status/status"
+  },
+  {
+    "text": "Cetak Monitoring PO VS BPB",
+    "href": "http://172.31.146.190/bo/pb/monitoring-po-vs-bpb"
+  },
+  {
+    "text": "Cetak PB",
+    "href": "http://172.31.146.190/bo/pb/cetak-pb"
+  },
+  {
+    "text": "Cetak Tolakan PB",
+    "href": "http://172.31.146.190/bo/pb/cetak-tolakan-pb"
+  },
+  {
+    "text": "Draft Replenishment",
+    "href": "http://172.31.146.190/bo/pb/draft-replenishment"
+  },
+  {
+    "text": "Item Maxpalet Untuk PB",
+    "href": "http://172.31.146.190/bo/pb/max-palet"
+  },
+  {
+    "text": "Kertas Kerja Estimasi Kebutuhan Toko IGR",
+    "href": "http://172.31.146.190/bo/pb/kkei"
+  },
+  {
+    "text": "PB Alokasi GO",
+    "href": "http://172.31.146.190/bo/pb/alokasi-go"
+  },
+  {
+    "text": "PB Alokasi GO",
+    "href": "http://172.31.146.190/bo/pb/alokasi-go"
+  },
+  {
+    "text": "PB MDIH Ke ICC",
+    "href": "http://172.31.146.190/bo/pb/mdih-ke-icc"
+  },
+  {
+    "text": "PB Manual MD",
+    "href": "http://172.31.146.190/bo/pb/manual-md"
+  },
+  {
+    "text": "PB Otomatis",
+    "href": "http://172.31.146.190/bo/pb/pb-otomatis"
+  },
+  {
+    "text": "PB POT",
+    "href": "http://172.31.146.190/bo/pb/pb-pot"
+  },
+  {
+    "text": "PB Perishable",
+    "href": "http://172.31.146.190/bo/pb/pbperishable"
+  },
+  {
+    "text": "Reorder PB GO",
+    "href": "http://172.31.146.190/bo/pb/reorder-pb-go"
+  },
+  {
+    "text": "Upload dan Monitoring KKEI Toko IGR",
+    "href": "http://172.31.146.190/bo/pb/kirimkkei"
+  },
+  {
+    "text": "Utility PB IGR",
+    "href": "http://172.31.146.190/bo/pb/utility-pb-igr"
+  },
+  {
+    "text": "PB Procurement",
+    "href": "http://172.31.146.190/bo/pengadaan-item-procurement/pb-procurement"
+  },
+  {
+    "text": "Penerimaan Procurement",
+    "href": "http://172.31.146.190/bo/pengadaan-item-procurement/bpb-procurement"
+  },
+  {
+    "text": "Copy Avg Cost Month End & Backup Data",
+    "href": "http://172.31.146.190/bo/proses/copy-avg-cost"
+  },
+  {
+    "text": "Hitung Ulang Stock",
+    "href": "http://172.31.146.190/bo/proses/hitungulangstock"
+  },
+  {
+    "text": "Kartu Gudang",
+    "href": "http://172.31.146.190/bo/proses/kartu-gudang"
+  },
+  {
+    "text": "Konversi Item Perishable Olahan",
+    "href": "http://172.31.146.190/bo/proses/konversi"
+  },
+  {
+    "text": "Month End",
+    "href": "http://172.31.146.190/bo/proses/monthend"
+  },
+  {
+    "text": "Restore Data Month End",
+    "href": "http://172.31.146.190/bo/proses/restore-data-month-end"
+  },
+  {
+    "text": "Setting Pagi Hari",
+    "href": "http://172.31.146.190/bo/proses/setting-pagi-hari"
+  },
+  {
+    "text": "Simulasi Proses PKM",
+    "href": "http://172.31.146.190/bo/proses/simulasi-proses-pkm"
+  },
+  {
+    "text": "Input",
+    "href": "http://172.31.146.190/bo/transaksi/barang-hilang/input"
+  },
+  {
+    "text": "Inquery NBH",
+    "href": "http://172.31.146.190/bo/transaksi/barang-hilang/inquery-nbh"
+  },
+  {
+    "text": "Pembatalan NBH",
+    "href": "http://172.31.146.190/bo/transaksi/barang-hilang/pembatalan-nbh"
+  },
+  {
+    "text": "Barang Rusak",
+    "href": "http://172.31.146.190/bo/transaksi/pemusnahan/barang-rusak"
+  },
+  {
+    "text": "Berita Acara Pemusnahan",
+    "href": "http://172.31.146.190/bo/transaksi/pemusnahan/bapemusnahan"
+  },
+  {
+    "text": "Inquery BA Pemusnahan",
+    "href": "http://172.31.146.190/bo/transaksi/pemusnahan/inquerybapb"
+  },
+  {
+    "text": "Master Alasan Barang Rusak",
+    "href": "http://172.31.146.190/bo/transaksi/pemusnahan/alasan-barang-rusak"
+  },
+  {
+    "text": "Pembatalan BA Pemusnahan",
+    "href": "http://172.31.146.190/bo/transaksi/pemusnahan/bapbatal"
+  },
+  {
+    "text": "Barcode Putih",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/barcode-putih"
+  },
+  {
+    "text": "Cetak BPB",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/printbpb"
+  },
+  {
+    "text": "Cetak Laporan BPB",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/cetakbpb"
+  },
+  {
+    "text": "Download NPD - Upload BK",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/data-rte"
+  },
+  {
+    "text": "Input",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/input"
+  },
+  {
+    "text": "Input Tanda Tangan",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/ttd"
+  },
+  {
+    "text": "Inquery BPB",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/inquery"
+  },
+  {
+    "text": "Pembatalan BPB",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/pembatalan"
+  },
+  {
+    "text": "Proses BAPS",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/proses-baps"
+  },
+  {
+    "text": "Selisih Penerimaan",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/selisih-penerimaan"
+  },
+  {
+    "text": "Selisih Penerimaan",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/selisih-penerimaan"
+  },
+  {
+    "text": "Utility Mr. Bread",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaan/util-bread"
+  },
+  {
+    "text": "Cetak Transfer Antar Cabang",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaandaricabang/cetak-transfer"
+  },
+  {
+    "text": "Inquery Transfer Antar Cabang",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaandaricabang/inquery-transfer"
+  },
+  {
+    "text": "Pembatalan Transfer Antar Cabang",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaandaricabang/batal-transfer"
+  },
+  {
+    "text": "Penerimaan / Transfer Antar Cabang",
+    "href": "http://172.31.146.190/bo/transaksi/penerimaandaricabang/penerimaan-transfer"
+  },
+  {
+    "text": "Cetak Ulang Faktur Pajak",
+    "href": "http://172.31.146.190/bo/transaksi/pengeluaran/cetak-ulang-faktur-pajak"
+  },
+  {
+    "text": "Input",
+    "href": "http://172.31.146.190/bo/transaksi/pengeluaran/input"
+  },
+  {
+    "text": "Inquery NPB",
+    "href": "http://172.31.146.190/bo/transaksi/pengeluaran/inquery"
+  },
+  {
+    "text": "Inquery Retur Barang Per Supplier",
+    "href": "http://172.31.146.190/bo/transaksi/pengeluaran/inqueryrtrsup"
+  },
+  {
+    "text": "Pembatalan NBP",
+    "href": "http://172.31.146.190/bo/transaksi/pengeluaran/pembatalan"
+  },
+  {
+    "text": "Cetak SJ Packlist",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/cetak-sj-packlist"
+  },
+  {
+    "text": "Cetak Surat Jalan",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/cetak"
+  },
+  {
+    "text": "Input",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/input"
+  },
+  {
+    "text": "Inquery Surat Jalan",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/inquery"
+  },
+  {
+    "text": "Pembatalan Surat Jalan",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/batal"
+  },
+  {
+    "text": "Transaksi SJ Packlist",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/sj-packlist"
+  },
+  {
+    "text": "Transfer Surat Jalan",
+    "href": "http://172.31.146.190/bo/transaksi/kirimcabang/transfer-sj"
+  },
+  {
+    "text": "Cetak",
+    "href": "http://172.31.146.190/bo/transaksi/penyesuaian/cetak"
+  },
+  {
+    "text": "Input",
+    "href": "http://172.31.146.190/bo/transaksi/penyesuaian/input"
+  },
+  {
+    "text": "Inquery MPP",
+    "href": "http://172.31.146.190/bo/transaksi/penyesuaian/inquerympp"
+  },
+  {
+    "text": "Pembatalan MPP",
+    "href": "http://172.31.146.190/bo/transaksi/penyesuaian/pembatalanmpp"
+  },
+  {
+    "text": "Proses Pergantian PLU (Stock Kosong)",
+    "href": "http://172.31.146.190/bo/transaksi/penyesuaian/proses-pergantian-plu"
+  },
+  {
+    "text": "Entry Perubahan Status",
+    "href": "http://172.31.146.190/bo/transaksi/perubahan-status/rubah-status"
+  },
+  {
+    "text": "Entry Sortir Barang",
+    "href": "http://172.31.146.190/bo/transaksi/perubahan-status/entry-sortir-barang"
+  },
+  {
+    "text": "Laporan Repacking",
+    "href": "http://172.31.146.190/bo/transaksi/repacking/laprepacking"
+  },
+  {
+    "text": "Repacking",
+    "href": "http://172.31.146.190/bo/transaksi/repacking/repacking"
+  },
+  {
+    "text": "Tranfser PB ke MD",
+    "href": "http://172.31.146.190/bo/transfer/pb-ke-md"
+  },
+  {
+    "text": "Transfer Lokasi",
+    "href": "http://172.31.146.190/bo/transfer/lokasi"
+  },
+  {
+    "text": "Transfer PLU",
+    "href": "http://172.31.146.190/bo/transfer/plu"
+  },
+  {
+    "text": "Transfer PO",
+    "href": "http://172.31.146.190/bo/transfer/po"
+  },
+  {
+    "text": "Usulan Transfer Lokasi",
+    "href": "http://172.31.146.190/bo/transfer/usulan-lokasi"
+  },
+  {
+    "text": "Usulan Transfer Lokasi",
+    "href": "http://172.31.146.190/bo/transfer/usulan-lokasi"
+  },
+  {
+    "text": "Adjustment Stock CMO",
+    "href": "http://172.31.146.190/bo/adjustment-stock-cmo"
+  },
+  {
+    "text": "Cetak Dokumen",
+    "href": "http://172.31.146.190/bo/cetak-dokumen"
+  },
+  {
+    "text": "Cetak Register",
+    "href": "http://172.31.146.190/bo/cetak-register"
+  },
+  {
+    "text": "Informasi dan History Product",
+    "href": "http://172.31.146.190/bo/informasi-history-product"
+  },
+  {
+    "text": "Input Pertemanan",
+    "href": "http://172.31.146.190/bo/input-pertemanan"
+  },
+  {
+    "text": "Kertas Kerja Status",
+    "href": "http://172.31.146.190/bo/kertas-kerja-status"
+  },
+  {
+    "text": "List Master",
+    "href": "http://172.31.146.190/bo/list-master"
+  },
+  {
+    "text": "Monitoring Stok Pareto & KKH PB Manual",
+    "href": "http://172.31.146.190/bo/monitoring-stok-pareto"
+  },
+  {
+    "text": "PB Gudang Pusat",
+    "href": "http://172.31.146.190/bo/pb-gudang-pusat"
+  },
+  {
+    "text": "Scan Barcode IGR",
+    "href": "http://172.31.146.190/bo/scan-barcode-igr"
+  },
+  {
+    "text": "Virtual Stock CMO",
+    "href": "http://172.31.146.190/bo/virtual-stock-cmo"
+  },
+  {
+    "text": "Barang Hadiah",
+    "href": "http://172.31.146.190/bh/master-barang-hadiah/barang-hadiah"
+  },
+  {
+    "text": "Laporan Barang Promosi",
+    "href": "http://172.31.146.190/bh/laporan-barang-promosi"
+  },
+  {
+    "text": "Per Customer",
+    "href": "http://172.31.146.190/btas/monitoring/percus"
+  },
+  {
+    "text": "Per Item Barang",
+    "href": "http://172.31.146.190/btas/monitoring/peritem"
+  },
+  {
+    "text": "Proses Penitipan Barang",
+    "href": "http://172.31.146.190/btas/titip"
+  },
+  {
+    "text": "Surat Jalan Atas Struk",
+    "href": "http://172.31.146.190/btas/sjas"
+  },
+  {
+    "text": "Actual Kasir Closing Per Variance",
+    "href": "http://172.31.146.190/fo/laporan-kasir/actual"
+  },
+  {
+    "text": "Daftar Member Tidak Aktif",
+    "href": "http://172.31.146.190/fo/laporan-kasir/daftar-member-tidak-aktif"
+  },
+  {
+    "text": "Laporan & Rekap Evaluasi Langganan Per Member",
+    "href": "http://172.31.146.190/fo/laporan-kasir/rekap-evaluasi"
+  },
+  {
+    "text": "Laporan Cashback / Event / Item",
+    "href": "http://172.31.146.190/fo/laporan-kasir/cei"
+  },
+  {
+    "text": "Laporan Cashback / Supplier / Item",
+    "href": "http://172.31.146.190/fo/laporan-kasir/csi"
+  },
+  {
+    "text": "Laporan Pareto Sales By Member",
+    "href": "http://172.31.146.190/fo/laporan-kasir/laporan-pareto-sales-by-member"
+  },
+  {
+    "text": "Laporan Penjualan Barang Counter Bon",
+    "href": "http://172.31.146.190/fo/laporan-kasir/laporan-penjualan-barang-counter-bon"
+  },
+  {
+    "text": "Laporan Rekap Refund Kasir",
+    "href": "http://172.31.146.190/fo/laporan-kasir/rkprefundksr"
+  },
+  {
+    "text": "Laporan Rekap Struk Per Kasir",
+    "href": "http://172.31.146.190/fo/laporan-kasir/strukperkasir"
+  },
+  {
+    "text": "Laporan Sales Regular & Sales Promosi",
+    "href": "http://172.31.146.190/fo/laporan-kasir/lap-regular-sales"
+  },
+  {
+    "text": "Laporan Sales TMI to MMS SPI",
+    "href": "http://172.31.146.190/fo/laporan-kasir/laporan-sales-spi-to-mms-tmi"
+  },
+  {
+    "text": "Laporan Transaksi BKP/BTKP",
+    "href": "http://172.31.146.190/fo/laporan-kasir/laporan-transaksi-bkp-btkp"
+  },
+  {
+    "text": "Laporan Transaksi Kartu Kredit Per Debit UKM",
+    "href": "http://172.31.146.190/fo/laporan-kasir/kartu-kredit/per-debit-ukm"
+  },
+  {
+    "text": "Laporan Transaksi Kartu Kredit Per Kasir",
+    "href": "http://172.31.146.190/fo/laporan-kasir/kartu-kredit/per-kasir"
+  },
+  {
+    "text": "Laporan Transaksi Kartu Kredit Per Nama Kartu",
+    "href": "http://172.31.146.190/fo/laporan-kasir/kartu-kredit/per-nama"
+  },
+  {
+    "text": "Laporan Transaksi Per Nilai Struk",
+    "href": "http://172.31.146.190/fo/laporan-kasir/transaksi-per-nilai-struk"
+  },
+  {
+    "text": "Laporan Transaksi Sales Voucher",
+    "href": "http://172.31.146.190/fo/laporan-kasir/transaksivoucher"
+  },
+  {
+    "text": "Penjualan",
+    "href": "http://172.31.146.190/fo/laporan-kasir/penjualan"
+  },
+  {
+    "text": "Register List Promosi & Struk Gift Member",
+    "href": "http://172.31.146.190/fo/laporan-kasir/lap-reg-list-promosi-struk-gift-member"
+  },
+  {
+    "text": "Rekap Member Status Kartu Aktif",
+    "href": "http://172.31.146.190/fo/laporan-kasir/rekap-member-status-kartu-aktif"
+  },
+  {
+    "text": "Laporan Sales Per Departemen Kategori",
+    "href": "http://172.31.146.190/fo/laporan-sales-per-departemen-kategori"
+  },
+  {
+    "text": "Laporan Sales Per Divisi Departemen",
+    "href": "http://172.31.146.190/fo/laporan-sales-per-divisi-departemen"
+  },
+  {
+    "text": "Laporan Sales Per Kategori Produk",
+    "href": "http://172.31.146.190/fo/laporan-sales-per-kategori-produk"
+  },
+  {
+    "text": "Laporan Sales Per Produk Member",
+    "href": "http://172.31.146.190/fo/laporan-sales-per-produk-member"
+  },
+  {
+    "text": "Penggunaan Point Reward Per Tanggal",
+    "href": "http://172.31.146.190/fo/point-reward-member-merah/penggunaan-point-reward-per-tanggal"
+  },
+  {
+    "text": "Perolehan Point Reward Per Tanggal",
+    "href": "http://172.31.146.190/fo/point-reward-member-merah/perolehan-point-reward-per-tanggal"
+  },
+  {
+    "text": "Rekapitulasi Mutasi Point Reward",
+    "href": "http://172.31.146.190/fo/point-reward-member-merah/rekapitulasi-mutasi-point-reward"
+  },
+  {
+    "text": "Approval Member Platinum",
+    "href": "http://172.31.146.190/fo/amp"
+  },
+  {
+    "text": "Cetak Laporan Promosi",
+    "href": "http://172.31.146.190/fo/cetak-laporan-promosi"
+  },
+  {
+    "text": "Download Data Promosi HO",
+    "href": "http://172.31.146.190/fo/promosihokecab"
+  },
+  {
+    "text": "Faktur Pajak Standard (Penjualan)",
+    "href": "http://172.31.146.190/fo/faktur-pajak-standard"
+  },
+  {
+    "text": "Form Harga Jual Khusus",
+    "href": "http://172.31.146.190/fo/formHJK"
+  },
+  {
+    "text": "Laporan Evaluasi Sales Member",
+    "href": "http://172.31.146.190/fo/laporan-evaluasi-sales-member"
+  },
+  {
+    "text": "Laporan Item Distribusi",
+    "href": "http://172.31.146.190/fo/laporan-item-distribusi"
+  },
+  {
+    "text": "Laporan Percetakan Faktur Pajak Standar",
+    "href": "http://172.31.146.190/fo/laporan-percetakan-faktur-pajak-standar"
+  },
+  {
+    "text": "Laporan Planogram",
+    "href": "http://172.31.146.190/fo/laporan-planogram"
+  },
+  {
+    "text": "Laporan Promosi Redeem via Unique Code",
+    "href": "http://172.31.146.190/fo/uniquecode"
+  },
+  {
+    "text": "Laporan Register",
+    "href": "http://172.31.146.190/fo/laporan-register"
+  },
+  {
+    "text": "Lokasi Sewa Gondola",
+    "href": "http://172.31.146.190/fo/lokasi-sewa-gondola"
+  },
+  {
+    "text": "Monitoring Faktur Pajak",
+    "href": "http://172.31.146.190/fo/monitoring-fp"
+  },
+  {
+    "text": "SPB Manual",
+    "href": "http://172.31.146.190/fo/spbmanual"
+  },
+  {
+    "text": "Serv Report",
+    "href": "http://172.31.146.190/fo/serv-report"
+  },
+  {
+    "text": "Stock Barang Kosong Per Periode DSI",
+    "href": "http://172.31.146.190/fo/stock-barang-kosong-per-periode-dsi"
+  },
+  {
+    "text": "Aktifkan Harga Jual All Item",
+    "href": "http://172.31.146.190/master/mstaktifallhrgjual"
+  },
+  {
+    "text": "Aktifkan Harga Jual Per Item",
+    "href": "http://172.31.146.190/master/mstaktifhrgjual"
+  },
+  {
+    "text": "Master Approval",
+    "href": "http://172.31.146.190/master/approval"
+  },
+  {
+    "text": "Master Barang",
+    "href": "http://172.31.146.190/master/barang"
+  },
+  {
+    "text": "Master Barcode",
+    "href": "http://172.31.146.190/master/barcode"
+  },
+  {
+    "text": "Master Cabang",
+    "href": "http://172.31.146.190/master/mstcabang"
+  },
+  {
+    "text": "Master Departement",
+    "href": "http://172.31.146.190/master/departement"
+  },
+  {
+    "text": "Master Divisi",
+    "href": "http://172.31.146.190/master/divisi"
+  },
+  {
+    "text": "Master Ekspedisi",
+    "href": "http://172.31.146.190/master/ekspedisi"
+  },
+  {
+    "text": "Master Gudang Sewa",
+    "href": "http://172.31.146.190/master/gudang-sewa"
+  },
+  {
+    "text": "Master Harga Beli",
+    "href": "http://172.31.146.190/master/hargabeli"
+  },
+  {
+    "text": "Master Hari Libur",
+    "href": "http://172.31.146.190/master/mstharilibur"
+  },
+  {
+    "text": "Master Jenis Item",
+    "href": "http://172.31.146.190/master/jenis-item"
+  },
+  {
+    "text": "Master Kategori Barang",
+    "href": "http://172.31.146.190/master/kategori-barang"
+  },
+  {
+    "text": "Master Kategori Toko",
+    "href": "http://172.31.146.190/master/kategori-toko"
+  },
+  {
+    "text": "Master Koefisien",
+    "href": "http://172.31.146.190/master/master-koefisien"
+  },
+  {
+    "text": "Master Kubikasi Plano",
+    "href": "http://172.31.146.190/master/kubikasi-plano"
+  },
+  {
+    "text": "Master Lokasi",
+    "href": "http://172.31.146.190/master/lokasi"
+  },
+  {
+    "text": "Master Member",
+    "href": "http://172.31.146.190/master/member"
+  },
+  {
+    "text": "Master Member PT 500",
+    "href": "http://172.31.146.190/master/member-pt500"
+  },
+  {
+    "text": "Master OMI",
+    "href": "http://172.31.146.190/master/mstomi"
+  },
+  {
+    "text": "Master Outlet",
+    "href": "http://172.31.146.190/master/mstoutlet"
+  },
+  {
+    "text": "Master Perusahaan",
+    "href": "http://172.31.146.190/master/perusahaan"
+  },
+  {
+    "text": "Master Perwakilan",
+    "href": "http://172.31.146.190/master/master-perwakilan"
+  },
+  {
+    "text": "Master Seasonal Month",
+    "href": "http://172.31.146.190/master/month-seasonal"
+  },
+  {
+    "text": "Master Sub Outlet",
+    "href": "http://172.31.146.190/master/mstsuboutlet"
+  },
+  {
+    "text": "Master Supplier",
+    "href": "http://172.31.146.190/master/supplier"
+  },
+  {
+    "text": "Monitoring PLU EIS",
+    "href": "http://172.31.146.190/monitoring/monitoring-plu-eis"
+  },
+  {
+    "text": "Laporan Beda Tag IGR OMI",
+    "href": "http://172.31.146.190/omi/laporan/beda-tag-igr"
+  },
+  {
+    "text": "Laporan Cetak Faktur Pajak",
+    "href": "http://172.31.146.190/omi/laporan/cetak-faktur-pajak"
+  },
+  {
+    "text": "Laporan Register BPB Retur",
+    "href": "http://172.31.146.190/omi/laporan/laporan-register-barang-retur"
+  },
+  {
+    "text": "Laporan Register PPR",
+    "href": "http://172.31.146.190/omi/laporan/register-ppr"
+  },
+  {
+    "text": "Laporan Rekap Service Level Sales Thd PB",
+    "href": "http://172.31.146.190/omi/laporan/laporan-rekap-service-level-sales-thd-pb"
+  },
+  {
+    "text": "Laporan Rekapitulasi Register PPR",
+    "href": "http://172.31.146.190/omi/laporan/rekapitulasi-register-ppr"
+  },
+  {
+    "text": "Re-print BKL",
+    "href": "http://172.31.146.190/omi/laporan/reprint-bkl"
+  },
+  {
+    "text": "Kredit Limit Dan Monitoring PB OMI",
+    "href": "http://172.31.146.190/omi/transfer-order-dari-omi-idm/kredit-limit-dan-monitoring-pb-omi"
+  },
+  {
+    "text": "Proses Tolakan CLO PB OMI",
+    "href": "http://172.31.146.190/omi/transfer-order-dari-omi-idm/proses-tolakan-clo-pb-omi"
+  },
+  {
+    "text": "Entry Group Rak",
+    "href": "http://172.31.146.190/omi/entry-group-rak"
+  },
+  {
+    "text": "Free PLU OMI Kepala 9",
+    "href": "http://172.31.146.190/omi/free-plu-omi-kepala-9"
+  },
+  {
+    "text": "Proses BKL Dalam Kota",
+    "href": "http://172.31.146.190/omi/proses-bkl"
+  },
+  {
+    "text": "Proses Rubah Status OMI PTKP ke PKPP",
+    "href": "http://172.31.146.190/omi/perubahan-status-omi-ptkp-to-pkp"
+  },
+  {
+    "text": "Retur OMI",
+    "href": "http://172.31.146.190/omi/retur"
+  },
+  {
+    "text": "Signature",
+    "href": "http://172.31.146.190/signature"
+  },
+  {
+    "text": "Hadiah Per Item Barang",
+    "href": "http://172.31.146.190/tabel/hadiah-transaksi/hadiah-per-item-barang"
+  },
+  {
+    "text": "Hadiah Untuk Gabungan Item",
+    "href": "http://172.31.146.190/tabel/hadiah-transaksi/hadiah-untuk-gabungan-item"
+  },
+  {
+    "text": "Maximum Pembelian Item Per Transaksi",
+    "href": "http://172.31.146.190/tabel/max-pembelian-item-per-transaksi"
+  },
+  {
+    "text": "Pendaftaran Voucher Belanja",
+    "href": "http://172.31.146.190/tabel/pendaftaran-voucher-belanja"
+  },
+  {
+    "text": "Harga Promosi",
+    "href": "http://172.31.146.190/tabel/harga-promosi"
+  },
+  {
+    "text": "Super Promo",
+    "href": "http://172.31.146.190/tabel/super-promo"
+  },
+  {
+    "text": "PLU Tidak Ikut Promo",
+    "href": "http://172.31.146.190/tabel/plunonpromo"
+  },
+  {
+    "text": "Tabel Pembayaran Voucher (Supplier)",
+    "href": "http://172.31.146.190/tabel/total-pembayaran-voucher"
+  },
+  {
+    "text": "PLU Kena Charge Credit Card",
+    "href": "http://172.31.146.190/tabel/plunoncharge"
+  },
+  {
+    "text": "PLU Yang Boleh Dibayar Dengan Voucher (Joint Promo)",
+    "href": "http://172.31.146.190/tabel/plu-voucher"
+  },
+  {
+    "text": "Jenis Rak Barang",
+    "href": "http://172.31.146.190/tabel/jenis-rak-barang"
+  },
+  {
+    "text": "Tipe Rak Barang",
+    "href": "http://172.31.146.190/tabel/tipe-rak-barang"
+  },
+  {
+    "text": "PLU MRO",
+    "href": "http://172.31.146.190/tabel/plu-mro"
+  },
+  {
+    "text": "PLU MRO Monitoring",
+    "href": "http://172.31.146.190/tabel/plu-mro-monitoring"
+  },
+  {
+    "text": "Tabel Monitoring Produk",
+    "href": "http://172.31.146.190/tabel/monitoring-produk"
+  },
+  {
+    "text": "Tabel Monitoring Member",
+    "href": "http://172.31.146.190/tabel/monitoring-member"
+  },
+  {
+    "text": "Tabel Monitoring Supplier",
+    "href": "http://172.31.146.190/tabel/monitoring-supplier"
+  },
+  {
+    "text": "Tabel Monitoring Sales Dan Stock",
+    "href": "http://172.31.146.190/tabel/monitoring-sales-dan-stock"
+  },
+  {
+    "text": "Plu Timbangan",
+    "href": "http://172.31.146.190/tabel/plu-timbangan"
+  },
+  {
+    "text": "PLU Tidak Bisa Refund",
+    "href": "http://172.31.146.190/tabel/plunonrefund"
+  },
+  {
+    "text": "Konversi Member SPI",
+    "href": "http://172.31.146.190/tabel/konversi-member-spi"
+  },
+  {
+    "text": "Maximum Pembelian PLU Gabungan",
+    "href": "http://172.31.146.190/tabel/max-pembelian-plu-gabungan"
+  },
+  {
+    "text": "Logout",
+    "href": "http://172.31.146.190/logout"
+  },
+  {
+    "text": "english",
+    "href": "http://172.31.146.190/locale/en"
+  }
+]

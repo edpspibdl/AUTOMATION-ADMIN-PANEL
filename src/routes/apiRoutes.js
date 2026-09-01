@@ -103,4 +103,44 @@ router.post('/logs/clear', (req, res) => {
   res.json({ success: true });
 });
 
+// --- Modul Otomasi Web IAS ---
+const iasService = require('../services/iasAutomationService');
+
+// Ambil Konfigurasi IAS
+router.get('/ias/config', (req, res) => {
+  const config = iasService.getConfig();
+  res.json(config);
+});
+
+// Simpan Konfigurasi IAS
+router.post('/ias/config', (req, res) => {
+  try {
+    const updated = iasService.saveConfig(req.body);
+    addLog('success', '💾 Pengaturan Web IAS berhasil diperbarui.');
+    res.json({ success: true, config: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Ambil Daftar Menu Web IAS
+router.get('/ias/menus', (req, res) => {
+  const menus = iasService.getAvailableMenus();
+  res.json({ success: true, total: menus.length, menus });
+});
+
+// Uji Login & Koneksi Web IAS
+router.post('/ias/test-login', async (req, res) => {
+  const customConfig = req.body;
+  addLog('info', `🌐 Menguji login ke portal Web IAS (${customConfig.baseUrl || 'http://172.31.146.190'})...`);
+  const result = await iasService.login(customConfig);
+  if (result.success) {
+    addLog('success', `✅ Uji Login Web IAS BERHASIL! User: ${customConfig.username || 'RIS'}`);
+    res.json(result);
+  } else {
+    addLog('error', `❌ Uji Login Web IAS GAGAL: ${result.error}`);
+    res.status(400).json(result);
+  }
+});
+
 module.exports = router;

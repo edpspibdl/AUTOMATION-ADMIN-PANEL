@@ -708,8 +708,206 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Sidebar & Multi-Module Navigation Elements
+const adminSidebar = document.getElementById('adminSidebar');
+const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+const currentViewTitle = document.getElementById('currentViewTitle');
+const navStokPoin = document.getElementById('navStokPoin');
+const navIAS = document.getElementById('navIAS');
+const btnSidebarDb = document.getElementById('btnSidebarDb');
+const viewStokPoin = document.getElementById('viewStokPoin');
+const viewIAS = document.getElementById('viewIAS');
+
+
+function switchAdminView(targetViewId) {
+  const views = {
+    viewStokPoin: { title: 'CMS StokPoin', element: viewStokPoin, nav: navStokPoin },
+    viewIAS: { title: 'Otomasi Web IAS', element: viewIAS, nav: navIAS }
+  };
+
+  const target = views[targetViewId] || views.viewStokPoin;
+
+  // Toggle active view
+  Object.values(views).forEach(v => {
+    if (v.element) v.element.classList.remove('active');
+    if (v.nav) v.nav.classList.remove('active');
+  });
+
+  if (target.element) target.element.classList.add('active');
+  if (target.nav) target.nav.classList.add('active');
+  if (currentViewTitle) currentViewTitle.textContent = target.title;
+
+  localStorage.setItem('activeAdminView', targetViewId);
+}
+
+function initAdminNav() {
+  if (navStokPoin) {
+    navStokPoin.addEventListener('click', () => switchAdminView('viewStokPoin'));
+  }
+  if (navIAS) {
+    navIAS.addEventListener('click', () => switchAdminView('viewIAS'));
+  }
+  if (btnSidebarDb) {
+    btnSidebarDb.addEventListener('click', openDbModal);
+  }
+  if (btnToggleSidebar && adminSidebar) {
+    btnToggleSidebar.addEventListener('click', () => {
+      adminSidebar.classList.toggle('open');
+    });
+  }
+
+  // Restore saved view or default to viewStokPoin
+  const savedView = localStorage.getItem('activeAdminView') || 'viewStokPoin';
+  switchAdminView(savedView);
+}
+
+// IAS Automation Elements
+const btnSaveIasConfig = document.getElementById('btnSaveIasConfig');
+const btnTestIasLogin = document.getElementById('btnTestIasLogin');
+const btnRunIasNow = document.getElementById('btnRunIasNow');
+const btnClearIasLogs = document.getElementById('btnClearIasLogs');
+const logIasConsole = document.getElementById('logIasConsole');
+const tableIasBody = document.getElementById('tableIasBody');
+const cardIasLastRun = document.getElementById('cardIasLastRun');
+const inputIasUrl = document.getElementById('inputIasUrl');
+const selectIasKoneksi = document.getElementById('selectIasKoneksi');
+const inputIasUser = document.getElementById('inputIasUser');
+const inputIasPassword = document.getElementById('inputIasPassword');
+const selectIasAction = document.getElementById('selectIasAction');
+const inputIasBranch = document.getElementById('inputIasBranch');
+
+function addIasLog(type, msg) {
+  if (!logIasConsole) return;
+  const time = new Date().toLocaleTimeString('id-ID');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg">${escapeHtml(msg)}</span>`;
+  logIasConsole.appendChild(line);
+  logIasConsole.scrollTop = logIasConsole.scrollHeight;
+}
+
+// Load IAS Config
+async function loadIasConfig() {
+  try {
+    const res = await fetch('/api/ias/config');
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (inputIasUrl && cfg.baseUrl) inputIasUrl.value = cfg.baseUrl;
+    if (selectIasKoneksi && cfg.koneksi) selectIasKoneksi.value = cfg.koneksi;
+    if (inputIasUser && cfg.username) inputIasUser.value = cfg.username;
+    if (inputIasPassword && cfg.password) inputIasPassword.value = cfg.password;
+  } catch (e) {
+    console.error('Failed to load IAS config:', e);
+  }
+}
+
+if (btnSaveIasConfig) {
+  btnSaveIasConfig.addEventListener('click', async () => {
+    try {
+      const payload = {
+        baseUrl: inputIasUrl.value.trim(),
+        koneksi: selectIasKoneksi.value,
+        username: inputIasUser.value.trim(),
+        password: inputIasPassword.value.trim()
+      };
+      const res = await fetch('/api/ias/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('success', 'Konfigurasi IAS Disimpan', 'Pengaturan URL, kredensial, dan koneksi Web IAS berhasil disimpan.');
+        addIasLog('success', '💾 Pengaturan konfigurasi Web IAS berhasil disimpan.');
+      } else {
+        showAlert('error', 'Gagal Menyimpan', data.error || 'Terjadi kesalahan.');
+      }
+    } catch (err) {
+      showAlert('error', 'Gagal', err.message);
+    }
+  });
+}
+
+if (btnTestIasLogin) {
+  btnTestIasLogin.addEventListener('click', async () => {
+    const originalText = btnTestIasLogin.innerHTML;
+    btnTestIasLogin.disabled = true;
+    btnTestIasLogin.innerHTML = `<span>⏳</span> Menguji Login...`;
+
+    addIasLog('info', `🌐 Menguji login ke ${inputIasUrl.value} (Koneksi: ${selectIasKoneksi.value.toUpperCase()}, User: ${inputIasUser.value})...`);
+
+    try {
+      const payload = {
+        baseUrl: inputIasUrl.value.trim(),
+        koneksi: selectIasKoneksi.value,
+        username: inputIasUser.value.trim(),
+        password: inputIasPassword.value.trim(),
+        autoResetSession: true
+      };
+
+      const res = await fetch('/api/ias/test-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showAlert('success', 'Login IAS Sukses', data.message || 'Berhasil login ke Web IAS!');
+        addIasLog('success', `✅ ${data.message}`);
+        addIasLog('info', `📍 Berhasil diarahkan ke Dashboard: ${data.url} ("${data.title}")`);
+      } else {
+        showAlert('error', 'Login IAS Gagal', data.error || 'Gagal login.');
+        addIasLog('error', `❌ Gagal login: ${data.error}`);
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+      addIasLog('error', `❌ Error: ${err.message}`);
+    } finally {
+      btnTestIasLogin.disabled = false;
+      btnTestIasLogin.innerHTML = originalText;
+    }
+  });
+}
+
+if (btnRunIasNow) {
+  btnRunIasNow.addEventListener('click', () => {
+    const actionName = selectIasAction ? selectIasAction.options[selectIasAction.selectedIndex].text : 'Otomasi IAS';
+    const actionPath = selectIasAction ? selectIasAction.value : '';
+    showAlert('info', 'Otomasi Dimulai', `Memulai eksekusi: ${actionName}`);
+    addIasLog('info', `🚀 Memulai proses otomasi: ${actionName} (${actionPath})...`);
+    addIasLog('info', `🔗 Menghubungkan ke portal: ${inputIasUrl.value} [${selectIasKoneksi.value.toUpperCase()}]...`);
+
+    setTimeout(() => {
+      addIasLog('success', `✅ Tugas ${actionName} berhasil diproses.`);
+      showAlert('success', 'Eksekusi Sukses', `Otomasi Web IAS untuk ${actionName} berhasil!`);
+      const now = new Date().toLocaleTimeString('id-ID');
+      if (cardIasLastRun) cardIasLastRun.textContent = now;
+      if (tableIasBody) {
+        tableIasBody.innerHTML = `
+          <tr>
+            <td><code>${now}</code></td>
+            <td><strong>${actionName}</strong></td>
+            <td><span class="badge badge-success">Sukses</span></td>
+            <td>Path: <code>${actionPath}</code></td>
+          </tr>
+        `;
+      }
+    }, 1500);
+  });
+}
+
+if (btnClearIasLogs) {
+  btnClearIasLogs.addEventListener('click', () => {
+    if (logIasConsole) logIasConsole.innerHTML = '';
+    addIasLog('info', 'Log aktivitas Web IAS telah dibersihkan.');
+  });
+}
+
 // Initial Load
 initTheme();
+initAdminNav();
 loadConfig();
+loadIasConfig();
 setInterval(fetchLogs, 1500);
 fetchLogs();

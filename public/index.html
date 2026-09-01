@@ -15,253 +15,540 @@
   <div class="glow glow-1"></div>
   <div class="glow glow-2"></div>
 
-  <div class="app-container">
-    <!-- Navbar Header -->
-    <header class="app-header">
-      <div class="logo-area">
-        <div class="logo-icon">⚡</div>
-        <div>
-          <h1 class="logo-title">StokPoin <span>Automation</span></h1>
-          <p class="logo-sub">Penjadwalan & Otomasi Status Item CMS (Manual & Query Margin Minus)</p>
-        </div>
-      </div>
-      <div class="header-status">
-        <button class="theme-toggle-btn" id="btnThemeToggle" title="Ganti Tema Terang/Gelap">
-          <span class="theme-icon" id="themeIcon">🌙</span>
-          <span class="theme-text" id="themeText">Dark</span>
-        </button>
-        <div class="status-chip" id="serverStatusBadge">
-          <span class="pulse-dot"></span>
-          <span id="serverStatusText">Online</span>
-        </div>
-        <div class="clock-chip" id="liveClock">--:--:-- WIB</div>
-      </div>
-    </header>
-
-    <!-- Top Metrics Overview -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-icon schedule-icon">🛡️</div>
-        <div class="metric-info">
-          <span class="metric-label">Guard Margin Minus</span>
-          <h3 class="metric-value" id="cardMarminStatus">AKTIF</h3>
-          <span class="metric-detail" id="cardMarminInterval">Setiap 5 Menit Sekali</span>
+  <div class="admin-layout">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-icon">⚡</div>
+        <div class="brand-info">
+          <h2 class="brand-title">ADMIN <span>PANEL</span></h2>
+          <span class="brand-badge">EDP SPI BDL 1R</span>
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon time-icon">⏰</div>
-        <div class="metric-info">
-          <span class="metric-label">Jadwal Harian Manual</span>
-          <h3 class="metric-value" id="cardDailyStatus">AKTIF</h3>
-          <span class="metric-detail" id="cardDailyTime">Pukul 22:00 WIB</span>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon plu-icon">🏷️</div>
-        <div class="metric-info">
-          <span class="metric-label">PLU Manual Terdaftar</span>
-          <h3 class="metric-value" id="cardPluCount">0 PLU</h3>
-          <span class="metric-detail" id="cardDailyAction">Aksi: NONAKTIF</span>
-        </div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon lastrun-icon">🕒</div>
-        <div class="metric-info">
-          <span class="metric-label">Eksekusi Terakhir</span>
-          <h3 class="metric-value" id="cardLastRun">-</h3>
-          <span class="metric-detail" id="cardLastRunSummary">Belum ada riwayat</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Workspace (2 Columns) -->
-    <div class="workspace-grid">
-      <!-- Left Column: Auto-Guard & Manual Schedule Controls -->
-      <div class="column-left">
-        
-        <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL -->
-        <div class="glass-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">🛡️</span>
-              <h2>Pencegah Margin Minus (Auto-Guard PostgreSQL)</h2>
+      <div class="sidebar-content">
+        <div class="nav-section">
+          <span class="nav-heading">MODUL OTOMASI</span>
+          
+          <!-- Menu 1: CMS StokPoin (Active) -->
+          <button class="nav-link active" data-view="viewStokPoin" id="navStokPoin">
+            <span class="nav-icon">📦</span>
+            <div class="nav-text">
+              <span class="nav-title">CMS StokPoin</span>
+              <span class="nav-desc">Marmin Guard & PLU Manual</span>
             </div>
-            <label class="switch-toggle" title="Aktifkan / Matikan Auto-Guard Margin Minus">
-              <input type="checkbox" id="toggleMarminGuard" checked>
-              <span class="slider round"></span>
-            </label>
+            <span class="nav-pill nav-pill-running">Running</span>
+          </button>
+
+          <!-- Menu 2: Otomasi Web IAS (Baru) -->
+          <button class="nav-link" data-view="viewIAS" id="navIAS">
+            <span class="nav-icon">🏢</span>
+            <div class="nav-text">
+              <span class="nav-title">Otomasi Web IAS</span>
+              <span class="nav-desc">Integrasi & Aksi Web IAS</span>
+            </div>
+            <span class="nav-pill nav-pill-new">Baru</span>
+          </button>
+        </div>
+
+        <div class="nav-section mt-auto">
+          <span class="nav-heading">DATABASE & UTILITIES</span>
+          <button class="nav-link nav-link-sub" id="btnSidebarDb">
+            <span class="nav-icon">🐘</span>
+            <div class="nav-text">
+              <span class="nav-title">Database PostgreSQL</span>
+              <span class="nav-desc">172.31.146.253 / spibdl1r</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-avatar">SPI</div>
+        <div class="user-info">
+          <span class="user-title">Indogrosir BDL 1R</span>
+          <span class="user-sub">mgr.spi1r@bdl.indogrosir...</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="admin-main">
+      <!-- Navbar Header Topbar -->
+      <header class="app-header">
+        <div class="topbar-left">
+          <button class="sidebar-toggle-btn" id="btnToggleSidebar" title="Toggle Sidebar">
+            <span>☰</span>
+          </button>
+          <div class="breadcrumb-area">
+            <span class="breadcrumb-root">Admin Panel</span>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current" id="currentViewTitle">CMS StokPoin</span>
           </div>
-          <div class="card-body">
-            <p class="section-desc">
-              Sistem mengecek database PostgreSQL secara berkala. <strong>Jika terdeteksi item Margin Minus, sistem akan langsung menonaktifkannya di CMS secara instan!</strong>
-            </p>
-            <div class="form-row mt-2">
-              <div class="form-group flex-1">
-                <label for="selectMarminInterval">Frekuensi Pengecekan Database</label>
-                <div class="input-with-icon">
-                  <span class="field-icon">🔄</span>
-                  <select id="selectMarminInterval" class="custom-input">
-                    <option value="1">Setiap 1 Menit Sekali</option>
-                    <option value="5" selected>Setiap 5 Menit Sekali</option>
-                    <option value="10">Setiap 10 Menit Sekali</option>
-                    <option value="15">Setiap 15 Menit Sekali</option>
-                    <option value="30">Setiap 30 Menit Sekali</option>
-                    <option value="60">Setiap 1 Jam Sekali</option>
-                  </select>
+        </div>
+
+        <div class="header-status">
+          <button class="theme-toggle-btn" id="btnThemeToggle" title="Ganti Tema Terang/Gelap">
+            <span class="theme-icon" id="themeIcon">🌙</span>
+            <span class="theme-text" id="themeText">Dark</span>
+          </button>
+          <div class="status-chip" id="serverStatusBadge">
+            <span class="pulse-dot"></span>
+            <span id="serverStatusText">Online</span>
+          </div>
+          <div class="clock-chip" id="liveClock">--:--:-- WIB</div>
+        </div>
+      </header>
+
+      <!-- ======================================================================
+           VIEW 1: CMS STOKPOIN AUTOMATION (Active Production Features)
+           ====================================================================== -->
+      <section class="admin-view active" id="viewStokPoin">
+        <!-- Top Metrics Overview -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon schedule-icon">🛡️</div>
+            <div class="metric-info">
+              <span class="metric-label">Guard Margin Minus</span>
+              <h3 class="metric-value" id="cardMarminStatus">AKTIF</h3>
+              <span class="metric-detail" id="cardMarminInterval">Setiap 5 Menit Sekali</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon time-icon">⏰</div>
+            <div class="metric-info">
+              <span class="metric-label">Jadwal Harian Manual</span>
+              <h3 class="metric-value" id="cardDailyStatus">AKTIF</h3>
+              <span class="metric-detail" id="cardDailyTime">Pukul 22:00 WIB</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon plu-icon">🏷️</div>
+            <div class="metric-info">
+              <span class="metric-label">PLU Manual Terdaftar</span>
+              <h3 class="metric-value" id="cardPluCount">0 PLU</h3>
+              <span class="metric-detail" id="cardDailyAction">Aksi: NONAKTIF</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon lastrun-icon">🕒</div>
+            <div class="metric-info">
+              <span class="metric-label">Eksekusi Terakhir</span>
+              <h3 class="metric-value" id="cardLastRun">-</h3>
+              <span class="metric-detail" id="cardLastRunSummary">Belum ada riwayat</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Workspace (2 Columns) -->
+        <div class="workspace-grid">
+          <!-- Left Column: Auto-Guard & Manual Schedule Controls -->
+          <div class="column-left">
+            
+            <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL -->
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">🛡️</span>
+                  <h2>Pencegah Margin Minus (Auto-Guard PostgreSQL)</h2>
+                </div>
+                <label class="switch-toggle" title="Aktifkan / Matikan Auto-Guard Margin Minus">
+                  <input type="checkbox" id="toggleMarminGuard" checked>
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div class="card-body">
+                <p class="section-desc">
+                  Sistem mengecek database PostgreSQL secara berkala. <strong>Jika terdeteksi item Margin Minus, sistem akan langsung menonaktifkannya di CMS secara instan!</strong>
+                </p>
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="selectMarminInterval">Frekuensi Pengecekan Database</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🔄</span>
+                      <select id="selectMarminInterval" class="custom-input">
+                        <option value="1">Setiap 1 Menit Sekali</option>
+                        <option value="5" selected>Setiap 5 Menit Sekali</option>
+                        <option value="10">Setiap 10 Menit Sekali</option>
+                        <option value="15">Setiap 15 Menit Sekali</option>
+                        <option value="30">Setiap 30 Menit Sekali</option>
+                        <option value="60">Setiap 1 Jam Sekali</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label>Aksi Otomatis</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">⚡</span>
+                      <input type="text" value="Langsung Nonaktifkan di CMS" class="custom-input" disabled style="opacity:0.85; cursor:not-allowed;">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="action-buttons-row mt-2">
+                  <button class="btn btn-outline btn-sm" id="btnOpenDbModal">
+                    <span>🐘</span> Pengaturan Database
+                  </button>
+                  <button class="btn btn-warning btn-sm" id="btnRunMarminGuardNow">
+                    <span>🛡️</span> Cek & Nonaktifkan Marmin Sekarang
+                  </button>
                 </div>
               </div>
-              <div class="form-group flex-1">
-                <label>Aksi Otomatis</label>
-                <div class="input-with-icon">
-                  <span class="field-icon">⚡</span>
-                  <input type="text" value="Langsung Nonaktifkan di CMS" class="custom-input" disabled style="opacity:0.85; cursor:not-allowed;">
+            </div>
+
+            <!-- Card 2: ⏰ Jadwal Harian Khusus PLU Manual -->
+            <div class="glass-card mt-3">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">⏰</span>
+                  <h2>Jadwal Harian PLU Manual (Input Sendiri)</h2>
+                </div>
+                <label class="switch-toggle" title="Aktifkan / Matikan Jadwal Harian Manual">
+                  <input type="checkbox" id="toggleDailySchedule" checked>
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div class="card-body">
+                <p class="section-desc">
+                  Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional tutup toko).
+                </p>
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="inputDailyTime">Jam Eksekusi Harian (WIB)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🕒</span>
+                      <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
+                    </div>
+                  </div>
+
+                  <div class="form-group flex-1">
+                    <label for="selectDailyAction">Aksi Yang Dilakukan</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">⚡</span>
+                      <select id="selectDailyAction" class="custom-input">
+                        <option value="nonaktif">Nonaktifkan Stok</option>
+                        <option value="aktif">Aktifkan Kembali</option>
+                        <option value="toggle">Toggle Status</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PLU Chips Preview -->
+                <div class="plu-chips-header mt-2">
+                  <span class="chips-title">Daftar PLU Manual:</span>
+                  <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
+                </div>
+                <div class="plu-chips-container" id="pluChipsContainer">
+                  <span class="chip-empty">Belum ada PLU manual. Klik <strong>"Input / Edit PLU"</strong>.</span>
+                </div>
+
+                <div class="action-buttons-row mt-2">
+                  <button class="btn btn-outline btn-sm" id="btnOpenPluModal">
+                    <span>📝</span> Input / Edit PLU
+                  </button>
+                  <button class="btn btn-primary btn-sm" id="btnSaveConfig">
+                    <span>💾</span> Simpan Pengaturan
+                  </button>
+                  <button class="btn btn-success btn-sm" id="btnRunManualDirect">
+                    <span>📋</span> Jalankan PLU Manual Sekarang
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div class="action-buttons-row mt-2">
-              <button class="btn btn-outline btn-sm" id="btnOpenDbModal">
-                <span>🐘</span> Pengaturan Database
-              </button>
-              <button class="btn btn-warning btn-sm" id="btnRunMarminGuardNow">
-                <span>🛡️</span> Cek & Nonaktifkan Marmin Sekarang
-              </button>
-            </div>
           </div>
-        </div>
 
-        <!-- Card 2: ⏰ Jadwal Harian Khusus PLU Manual -->
-        <div class="glass-card mt-3">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">⏰</span>
-              <h2>Jadwal Harian PLU Manual (Input Sendiri)</h2>
-            </div>
-            <label class="switch-toggle" title="Aktifkan / Matikan Jadwal Harian Manual">
-              <input type="checkbox" id="toggleDailySchedule" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="card-body">
-            <p class="section-desc">
-              Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional tutup toko).
-            </p>
-            <div class="form-row mt-2">
-              <div class="form-group flex-1">
-                <label for="inputDailyTime">Jam Eksekusi Harian (WIB)</label>
-                <div class="input-with-icon">
-                  <span class="field-icon">🕒</span>
-                  <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
+          <!-- Right Column: Live Data Margin Minus Table -->
+          <div class="column-right">
+            
+            <!-- Card 3: Pratinjau Item Margin Minus Terdeteksi -->
+            <div class="glass-card" id="cardQuerySection" style="height: 100%; display: flex; flex-direction: column;">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">📊</span>
+                  <h2>Data Margin Minus dari Database (PostgreSQL)</h2>
+                  <span class="badge badge-danger" id="badgeDbCount">0 Item</span>
+                </div>
+                <div class="header-actions">
+                  <button class="btn btn-sm btn-outline" id="btnRunQueryPreview">
+                    <span>📊</span> Refresh Data DB
+                  </button>
                 </div>
               </div>
-
-              <div class="form-group flex-1">
-                <label for="selectDailyAction">Aksi Yang Dilakukan</label>
-                <div class="input-with-icon">
-                  <span class="field-icon">⚡</span>
-                  <select id="selectDailyAction" class="custom-input">
-                    <option value="nonaktif">Nonaktifkan Stok</option>
-                    <option value="aktif">Aktifkan Kembali</option>
-                    <option value="toggle">Toggle Status</option>
-                  </select>
+              <div class="card-body" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="preview-header">
+                  <h3>Hasil Item Margin Minus Saat Ini:</h3>
+                  <small class="text-dim" id="dbLastQueryStatus">Belum dieksekusi</small>
+                </div>
+                <div class="table-responsive" style="flex: 1; max-height: 290px;">
+                  <table class="custom-table" id="tableDbPreview">
+                    <thead>
+                      <tr>
+                        <th width="14%">PLU</th>
+                        <th width="36%">Deskripsi</th>
+                        <th width="12%">Stok LPP</th>
+                        <th width="14%">Hrg / Promo</th>
+                        <th width="12%">Margin %</th>
+                        <th width="12%">Margin MD %</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableDbBody">
+                      <tr class="empty-row">
+                        <td colspan="6">Klik <strong>"📊 Refresh Data DB"</strong> untuk memuat data margin minus.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
-            <!-- PLU Chips Preview -->
-            <div class="plu-chips-header mt-2">
-              <span class="chips-title">Daftar PLU Manual:</span>
-              <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
-            </div>
-            <div class="plu-chips-container" id="pluChipsContainer">
-              <span class="chip-empty">Belum ada PLU manual. Klik <strong>"Input / Edit PLU"</strong>.</span>
-            </div>
+          </div>
+        </div>
 
-            <div class="action-buttons-row mt-2">
-              <button class="btn btn-outline btn-sm" id="btnOpenPluModal">
-                <span>📝</span> Input / Edit PLU
-              </button>
-              <button class="btn btn-primary btn-sm" id="btnSaveConfig">
-                <span>💾</span> Simpan Pengaturan
-              </button>
-              <button class="btn btn-success btn-sm" id="btnRunManualDirect">
-                <span>📋</span> Jalankan PLU Manual Sekarang
-              </button>
+        <!-- Bottom Full-Width Section: Terminal Console & Live Activity Logs -->
+        <div class="glass-card terminal-card mt-3">
+          <div class="card-header terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="terminal-title">Live Activity Logs</span>
+            </div>
+            <div class="terminal-actions">
+              <button class="btn btn-xs btn-ghost" id="btnClearLogs">Bersihkan</button>
+            </div>
+          </div>
+          <div class="terminal-body" id="logConsole">
+            <div class="log-line info">
+              <span class="log-time">[--:--:--]</span>
+              <span class="log-msg">Menghubungkan ke server...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================================
+           VIEW 2: OTOMASI WEB IAS (New Ready-to-Use Automation Module)
+           ====================================================================== -->
+      <section class="admin-view" id="viewIAS">
+        <!-- Top Metrics Overview for IAS -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">🏢</div>
+            <div class="metric-info">
+              <span class="metric-label">Status Modul IAS</span>
+              <h3 class="metric-value" style="color: var(--success);">SIAP DIGUNAKAN</h3>
+              <span class="metric-detail">Modul Otomasi Baru Aktif</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">⚡</div>
+            <div class="metric-info">
+              <span class="metric-label">Mode Otomasi</span>
+              <h3 class="metric-value">ON-DEMAND</h3>
+              <span class="metric-detail">Eksekusi Langsung & Terjadwal</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🌐</div>
+            <div class="metric-info">
+              <span class="metric-label">Target Portal Web</span>
+              <h3 class="metric-value">WEB IAS</h3>
+              <span class="metric-detail">Indogrosir IAS System</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">🕒</div>
+            <div class="metric-info">
+              <span class="metric-label">Riwayat Eksekusi</span>
+              <h3 class="metric-value" id="cardIasLastRun">-</h3>
+              <span class="metric-detail">Belum ada riwayat tugas IAS</span>
             </div>
           </div>
         </div>
 
-      </div>
+        <!-- Main Workspace (2 Columns) for IAS -->
+        <div class="workspace-grid">
+          <!-- Left Column: IAS Automation Configuration -->
+          <div class="column-left">
+            <div class="glass-card">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">🏢</span>
+                  <h2>Konfigurasi Otomasi Web IAS</h2>
+                </div>
+                <span class="badge badge-info">Modul Baru</span>
+              </div>
+              <div class="card-body">
+                <p class="section-desc">
+                  Workspace khusus otomasi Web IAS. Anda dapat menambahkan tugas otomatisasi seperti download laporan, sinkronisasi data, atau verifikasi status transaksi.
+                </p>
 
-      <!-- Right Column: Live Data Margin Minus Table -->
-      <div class="column-right">
-        
-        <!-- Card 3: Pratinjau Item Margin Minus Terdeteksi -->
-        <div class="glass-card" id="cardQuerySection" style="height: 100%; display: flex; flex-direction: column;">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">📊</span>
-              <h2>Data Margin Minus dari Database (PostgreSQL)</h2>
-              <span class="badge badge-danger" id="badgeDbCount">0 Item</span>
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="inputIasUrl">URL Portal Web IAS</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🔗</span>
+                      <input type="text" id="inputIasUrl" value="http://172.31.146.190" class="custom-input" placeholder="http://172.31.146.190">
+                    </div>
+                  </div>
+
+                  <div class="form-group flex-1">
+                    <label for="selectIasKoneksi">Koneksi Database IAS</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🔌</span>
+                      <select id="selectIasKoneksi" class="custom-input">
+                        <option value="sim" selected>SIMULASI (simspibdl1r)</option>
+                        <option value="igr">PRODUCTION (spibdl1r)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="inputIasUser">Username IAS</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">👤</span>
+                      <input type="text" id="inputIasUser" value="RIS" class="custom-input" placeholder="Username login IAS">
+                    </div>
+                  </div>
+
+                  <div class="form-group flex-1">
+                    <label for="inputIasPassword">Password IAS</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🔑</span>
+                      <input type="password" id="inputIasPassword" value="061201" class="custom-input" placeholder="Password login IAS">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="selectIasAction">Target Menu / Fitur IAS</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">⚡</span>
+                      <select id="selectIasAction" class="custom-input">
+                        <option value="/bo/lpp/lpp-minus">1. BO - LPP Minus</option>
+                        <option value="/bo/lpp/proses-lpp-harian">2. BO - Proses LPP Harian</option>
+                        <option value="/bo/laporan/sales-dan-stock">3. BO - Laporan Sales & Stock</option>
+                        <option value="/inquery/prod-supp">4. BO - Inquiry Produk Per Supplier</option>
+                        <option value="/bo/pb/cetak-pb">5. BO - Cetak Permintaan Barang (PB)</option>
+                        <option value="/master/barang">6. Master - Master Barang</option>
+                        <option value="/master/mstaktifallhrgjual">7. Master - Aktifkan Harga Jual All Item</option>
+                        <option value="/master/mstaktifhrgjual">8. Master - Aktifkan Harga Jual Per Item</option>
+                        <option value="/bo/laporan/daftar-pembelian">9. BO - Laporan Daftar Pembelian</option>
+                        <option value="custom">10. Custom Menu / Modul Lain</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group flex-1">
+                    <label for="inputIasBranch">Kode Cabang & ID</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">📍</span>
+                      <input type="text" id="inputIasBranch" value="1R (spibdl1r)" class="custom-input" readonly>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="action-buttons-row mt-3">
+                  <button class="btn btn-primary btn-sm" id="btnSaveIasConfig">
+                    <span>💾</span> Simpan Pengaturan IAS
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="btnTestIasLogin">
+                    <span>🧪</span> Uji Login & Koneksi IAS
+                  </button>
+                  <button class="btn btn-success btn-sm" id="btnRunIasNow">
+                    <span>🚀</span> Jalankan Otomasi IAS
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="header-actions">
-              <button class="btn btn-sm btn-outline" id="btnRunQueryPreview">
-                <span>📊</span> Refresh Data DB
-              </button>
+
+            <!-- Card: Catatan & Parameter Eksekusi IAS -->
+            <div class="glass-card mt-3">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">📋</span>
+                  <h2>Parameter Tambahan & Catatan IAS</h2>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="textareaIasNotes">Daftar Dokumen / Nomor Referensi IAS (Opsional)</label>
+                  <textarea id="textareaIasNotes" class="modal-textarea" rows="3" placeholder="Masukkan nomor dokumen atau filter parameter khusus IAS di sini..."></textarea>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="card-body" style="flex: 1; display: flex; flex-direction: column;">
-            <div class="preview-header">
-              <h3>Hasil Item Margin Minus Saat Ini:</h3>
-              <small class="text-dim" id="dbLastQueryStatus">Belum dieksekusi</small>
-            </div>
-            <div class="table-responsive" style="flex: 1; max-height: 290px;">
-              <table class="custom-table" id="tableDbPreview">
-                <thead>
-                  <tr>
-                    <th width="14%">PLU</th>
-                    <th width="36%">Deskripsi</th>
-                    <th width="12%">Stok LPP</th>
-                    <th width="14%">Hrg / Promo</th>
-                    <th width="12%">Margin %</th>
-                    <th width="12%">Margin MD %</th>
-                  </tr>
-                </thead>
-                <tbody id="tableDbBody">
-                  <tr class="empty-row">
-                    <td colspan="6">Klik <strong>"📊 Refresh Data DB"</strong> untuk memuat data margin minus.</td>
-                  </tr>
-                </tbody>
-              </table>
+
+          <!-- Right Column: IAS Queue & Task Status -->
+          <div class="column-right">
+            <div class="glass-card" style="height: 100%; display: flex; flex-direction: column;">
+              <div class="card-header">
+                <div class="card-title-group">
+                  <span class="card-icon">📊</span>
+                  <h2>Status Antrian & Integrasi IAS</h2>
+                </div>
+                <span class="badge badge-success">Standby</span>
+              </div>
+              <div class="card-body" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="preview-header">
+                  <h3>Daftar Tugas Otomasi IAS:</h3>
+                  <small class="text-dim">Siap menerima instruksi</small>
+                </div>
+                <div class="table-responsive" style="flex: 1; max-height: 310px;">
+                  <table class="custom-table">
+                    <thead>
+                      <tr>
+                        <th width="20%">Waktu</th>
+                        <th width="35%">Aksi Otomasi</th>
+                        <th width="25%">Status</th>
+                        <th width="20%">Output</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableIasBody">
+                      <tr class="empty-row">
+                        <td colspan="4">Belum ada tugas IAS yang dieksekusi. Klik <strong>"🚀 Jalankan Otomasi IAS Sekarang"</strong>.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-      </div>
-    </div>
+        <!-- Bottom Full-Width Section: IAS Activity Logs -->
+        <div class="glass-card terminal-card mt-3">
+          <div class="card-header terminal-header">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="terminal-title">Web IAS Activity Logs</span>
+            </div>
+            <div class="terminal-actions">
+              <button class="btn btn-xs btn-ghost" id="btnClearIasLogs">Bersihkan</button>
+            </div>
+          </div>
+          <div class="terminal-body" id="logIasConsole">
+            <div class="log-line info">
+              <span class="log-time">[--:--:--]</span>
+              <span class="log-msg">Modul Otomasi Web IAS siap menerima instruksi dan integrasi script baru.</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <!-- Bottom Full-Width Section: Terminal Console & Live Activity Logs -->
-    <div class="glass-card terminal-card mt-3">
-      <div class="card-header terminal-header">
-        <div class="terminal-dots">
-          <span class="dot dot-red"></span>
-          <span class="dot dot-yellow"></span>
-          <span class="dot dot-green"></span>
-          <span class="terminal-title">Live Activity Logs</span>
-        </div>
-        <div class="terminal-actions">
-          <button class="btn btn-xs btn-ghost" id="btnClearLogs">Bersihkan</button>
-        </div>
-      </div>
-      <div class="terminal-body" id="logConsole">
-        <div class="log-line info">
-          <span class="log-time">[--:--:--]</span>
-          <span class="log-msg">Menghubungkan ke server...</span>
-        </div>
-      </div>
     </div>
   </div>
 
