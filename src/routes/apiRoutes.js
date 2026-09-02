@@ -178,10 +178,66 @@ router.get('/ias/session/status', (req, res) => {
   res.json(iasService.getSessionStatus());
 });
 
+// Login Manual / Eksplisit ke Web IAS
+router.post('/ias/session/login', async (req, res) => {
+  try {
+    const result = await iasService.login(req.body);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Logout / Putuskan Sesi Web IAS
+router.post('/ias/session/logout', async (req, res) => {
+  try {
+    const result = await iasService.logout();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Ambil Konfigurasi Web IAS
+router.get('/ias/config', (req, res) => {
+  try {
+    const config = iasService.getConfig();
+    res.json({
+      success: true,
+      config: {
+        baseUrl: config.baseUrl,
+        koneksi: config.koneksi,
+        username: config.username,
+        branchCode: config.branchCode,
+        cabang: config.cabang,
+        autoResetSession: config.autoResetSession
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Simpan Konfigurasi Web IAS
+router.post('/ias/config', (req, res) => {
+  try {
+    const saved = iasService.saveConfig(req.body);
+    res.json({ success: true, config: saved });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Uji Login & Koneksi Web IAS
 router.post('/ias/test-login', async (req, res) => {
   const customConfig = req.body;
-  addIasLog('info', `🌐 Menguji login ke portal Web IAS (${customConfig.baseUrl || 'http://172.31.146.190'})...`);
+  const cfg = iasService.getConfig();
+  const targetUrl = customConfig.baseUrl || cfg.baseUrl || 'http://172.31.146.190';
+  addIasLog('info', `🌐 Menguji login ke portal Web IAS (${targetUrl})...`);
   const result = await iasService.login(customConfig);
   if (result.success) {
     addIasLog('success', `✅ Uji Login Web IAS BERHASIL! User: ${customConfig.username || 'RIS'}`);
@@ -364,9 +420,45 @@ router.post('/ias/kroscek/fetch-prev-lpp', async (req, res) => {
   }
 });
 
+router.post('/ias/kroscek/fetch-next-lpp', async (req, res) => {
+  try {
+    const result = await iasService.fetchLppBulanBerikutnya(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/ias/kroscek/fetch-daftar-pembelian', async (req, res) => {
   try {
     const result = await iasService.fetchAndParseDaftarPembelian(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-penjualan', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseLaporanPenjualan(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-lpp02', async (req, res) => {
+  try {
+    const result = await iasService.fetchLpp02(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-lpp03', async (req, res) => {
+  try {
+    const result = await iasService.fetchLpp03(req.body);
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

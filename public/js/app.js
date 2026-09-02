@@ -794,7 +794,7 @@ function switchAdminView(targetViewId) {
 
   if (targetViewId === 'viewIAS') {
     if (typeof populateDefaultDates === 'function') populateDefaultDates();
-    if (typeof autoConnectIasBackground === 'function') autoConnectIasBackground();
+    checkIasSessionStatus(true);
   }
 }
 
@@ -839,6 +839,11 @@ const cardIasSessionDetail = document.getElementById('cardIasSessionDetail');
 const badgeIasAutoLogin = document.getElementById('badgeIasAutoLogin');
 const btnToggleIasConfig = document.getElementById('btnToggleIasConfig');
 const drawerIasConfig = document.getElementById('drawerIasConfig');
+const iasLoginAlertBanner = document.getElementById('iasLoginAlertBanner');
+const iasModulesContainer = document.getElementById('iasModulesContainer');
+const btnTopBarIasLogin = document.getElementById('btnTopBarIasLogin');
+const btnTopBarIasLogout = document.getElementById('btnTopBarIasLogout');
+const btnManualIasLogin = document.getElementById('btnManualIasLogin');
 
 if (btnToggleIasConfig && drawerIasConfig) {
   btnToggleIasConfig.addEventListener('click', () => {
@@ -848,36 +853,75 @@ if (btnToggleIasConfig && drawerIasConfig) {
   });
 }
 
-let isIasConnecting = false;
+// Check if Web IAS is currently authenticated
+async function checkIasSessionStatus(showAlertOnLocked = false) {
+  try {
+    const res = await fetch('/api/ias/session/status');
+    const data = await res.json();
+    const isConnected = !!data.isConnected;
 
-// Auto-connect / Login otomatis di latar belakang saat buka menu
-async function autoConnectIasBackground() {
-  if (isIasConnecting) return;
-  isIasConnecting = true;
+    if (isConnected) {
+      if (iasLoginAlertBanner) iasLoginAlertBanner.style.display = 'none';
+      if (iasModulesContainer) iasModulesContainer.classList.remove('is-locked');
+      if (cardIasSessionValue) {
+        cardIasSessionValue.innerHTML = `<span style="color: var(--success);">🟢 TERHUBUNG (${data.user || 'RIS'})</span>`;
+      }
+      if (cardIasSessionDetail) {
+        cardIasSessionDetail.textContent = `Sesi aktif (${data.koneksi || 'SIMULASI'}) • Siap digunakan`;
+      }
+      if (badgeIasAutoLogin) {
+        badgeIasAutoLogin.className = 'badge badge-success';
+        badgeIasAutoLogin.innerHTML = `<span class="live-dot" style="width:6px;height:6px;background:#34d399;border-radius:50%;display:inline-block;margin-right:4px;"></span>Sesi Aktif`;
+      }
+      if (btnTopBarIasLogin) btnTopBarIasLogin.style.display = 'none';
+      if (btnTopBarIasLogout) btnTopBarIasLogout.style.display = 'inline-block';
+    } else {
+      if (iasLoginAlertBanner) iasLoginAlertBanner.style.display = 'flex';
+      if (iasModulesContainer) iasModulesContainer.classList.add('is-locked');
+      if (cardIasSessionValue) {
+        cardIasSessionValue.innerHTML = `<span style="color: #ef4444;">🔴 BELUM LOGIN</span>`;
+      }
+      if (cardIasSessionDetail) {
+        cardIasSessionDetail.textContent = 'Klik Login Web IAS untuk membuka menu';
+      }
+      if (badgeIasAutoLogin) {
+        badgeIasAutoLogin.className = 'badge badge-danger';
+        badgeIasAutoLogin.textContent = 'Terkunci';
+      }
+      if (btnTopBarIasLogin) btnTopBarIasLogin.style.display = 'inline-block';
+      if (btnTopBarIasLogout) btnTopBarIasLogout.style.display = 'none';
 
-  if (cardIasSessionValue) {
-    cardIasSessionValue.innerHTML = `<span style="color: var(--warning);">⏳ MENYIAPKAN SESI...</span>`;
+      if (showAlertOnLocked) {
+        showAlert('warning', 'Akses Terkunci', 'Sesi Web IAS belum login. Silakan klik tombol Login Web IAS terlebih dahulu.');
+      }
+    }
+    return isConnected;
+  } catch (err) {
+    console.error('Error checking IAS session status:', err);
+    return false;
   }
-  if (cardIasSessionDetail) {
-    cardIasSessionDetail.textContent = `Auto-login latar belakang sedang berjalan...`;
-  }
-  if (badgeIasAutoLogin) {
-    badgeIasAutoLogin.className = 'badge badge-warning';
-    badgeIasAutoLogin.innerHTML = `<span class="live-dot" style="width:6px;height:6px;background:#f59e0b;border-radius:50%;display:inline-block;margin-right:4px;"></span>Menghubungkan...`;
-  }
+}
 
-  addIasLog('info', '🌐 Menjalankan login Web IAS otomatis di latar belakang...');
+// Login manual eksplisit ke Web IAS
+async function doIasLogin() {
+  const btns = [btnManualIasLogin, btnTopBarIasLogin].filter(Boolean);
+  btns.forEach(b => {
+    b.disabled = true;
+    b.dataset.origHtml = b.innerHTML;
+    b.innerHTML = '<span>⏳</span> Sedang Login...';
+  });
+
+  addIasLog('info', '🌐 Menghubungkan dan login ke Web IAS...');
+  showAlert('info', 'Menghubungkan ke IAS', 'Sedang memproses autentikasi Web IAS di latar belakang...');
 
   try {
-    const payload = {
-      baseUrl: inputIasUrl ? inputIasUrl.value.trim() : 'http://172.31.146.190',
-      koneksi: selectIasKoneksi ? selectIasKoneksi.value : 'sim',
-      username: inputIasUser ? inputIasUser.value.trim() : 'RIS',
-      password: inputIasPassword ? inputIasPassword.value.trim() : '061201',
-      autoResetSession: true
-    };
+    const payload = {};
+    if (inputIasUrl && inputIasUrl.value.trim()) payload.baseUrl = inputIasUrl.value.trim();
+    if (selectIasKoneksi && selectIasKoneksi.value) payload.koneksi = selectIasKoneksi.value;
+    if (inputIasUser && inputIasUser.value.trim()) payload.username = inputIasUser.value.trim();
+    if (inputIasPassword && inputIasPassword.value.trim()) payload.password = inputIasPassword.value.trim();
 
-    const res = await fetch('/api/ias/auto-connect', {
+    const res = await fetch('/api/ias/session/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -885,48 +929,137 @@ async function autoConnectIasBackground() {
 
     const data = await res.json();
     if (data.success) {
-      const sess = data.session || {};
-      if (cardIasSessionValue) {
-        cardIasSessionValue.innerHTML = `<span style="color: var(--success);">🟢 TERHUBUNG (${sess.user || 'RIS'})</span>`;
-      }
-      if (cardIasSessionDetail) {
-        cardIasSessionDetail.textContent = `Sesi aktif (${sess.koneksi || 'SIMULASI'}) • Terhubung: ${sess.lastConnected || 'Barusan'}`;
-      }
-      if (badgeIasAutoLogin) {
-        badgeIasAutoLogin.className = 'badge badge-success';
-        badgeIasAutoLogin.innerHTML = `<span class="live-dot" style="width:6px;height:6px;background:#34d399;border-radius:50%;display:inline-block;margin-right:4px;"></span>Auto-Login Latar Belakang`;
-      }
-      addIasLog('success', `✅ Sesi Web IAS aktif di latar belakang (${sess.koneksi || 'SIMULASI'} - ${sess.user || 'RIS'})`);
-
-      // Update tasks status immediately from background session response
-      if (data.tasks) {
-        applyTasksDataToUi(data.tasks);
-      }
+      await checkIasSessionStatus(false);
+      showAlert('success', 'Login Web IAS Berhasil', 'Sesi terhubung! Semua menu otomatisasi kini terbuka.');
+      addIasLog('success', `✅ Berhasil login ke Web IAS! Sesi browser dipertahankan aktif.`);
+      loadIasTasksStatus(true);
     } else {
-      if (cardIasSessionValue) {
-        cardIasSessionValue.innerHTML = `<span style="color: var(--danger);">❌ GAGAL LOGIN</span>`;
-      }
-      if (cardIasSessionDetail) {
-        cardIasSessionDetail.textContent = data.error ? data.error.slice(0, 45) : 'Gagal login latar belakang';
-      }
-      if (badgeIasAutoLogin) {
-        badgeIasAutoLogin.className = 'badge badge-danger';
-        badgeIasAutoLogin.textContent = 'Gagal Login';
-      }
-      addIasLog('error', `❌ Auto-login latar belakang gagal: ${data.error || 'Unknown error'}`);
+      showAlert('error', 'Login Web IAS Gagal', data.error || 'Terjadi kesalahan autentikasi.');
+      addIasLog('error', `❌ Login Web IAS gagal: ${data.error || 'Unknown error'}`);
     }
   } catch (err) {
-    console.error('Auto-connect error:', err);
-    if (cardIasSessionValue) {
-      cardIasSessionValue.innerHTML = `<span style="color: var(--danger);">❌ OFFLINE</span>`;
-    }
-    if (cardIasSessionDetail) {
-      cardIasSessionDetail.textContent = err.message;
-    }
-    addIasLog('error', `❌ Auto-login error: ${err.message}`);
+    showAlert('error', 'Error Jaringan', err.message);
+    addIasLog('error', `❌ Error koneksi login: ${err.message}`);
   } finally {
-    isIasConnecting = false;
+    btns.forEach(b => {
+      b.disabled = false;
+      if (b.dataset.origHtml) b.innerHTML = b.dataset.origHtml;
+    });
   }
+}
+
+// Logout / putuskan sesi Web IAS
+async function doIasLogout() {
+  if (btnTopBarIasLogout) {
+    btnTopBarIasLogout.disabled = true;
+    btnTopBarIasLogout.innerHTML = '<span>⏳</span> Logout...';
+  }
+
+  try {
+    await fetch('/api/ias/session/logout', { method: 'POST' });
+    await checkIasSessionStatus(false);
+    showAlert('info', 'Sesi Ditutup', 'Sesi Web IAS berhasil diputuskan (Logout). Menu otomatisasi kembali dikunci.');
+    addIasLog('info', '🚪 Sesi Web IAS telah ditutup.');
+  } catch (err) {
+    showAlert('error', 'Error Logout', err.message);
+  } finally {
+    if (btnTopBarIasLogout) {
+      btnTopBarIasLogout.disabled = false;
+      btnTopBarIasLogout.innerHTML = '<span>🚪</span> Logout';
+    }
+  }
+}
+
+if (btnManualIasLogin) btnManualIasLogin.addEventListener('click', doIasLogin);
+if (btnTopBarIasLogin) btnTopBarIasLogin.addEventListener('click', doIasLogin);
+if (btnTopBarIasLogout) btnTopBarIasLogout.addEventListener('click', doIasLogout);
+
+// Load IAS Configuration dynamically from server
+async function loadIasConfig() {
+  try {
+    const res = await fetch('/api/ias/config');
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.success && json.config) {
+      if (inputIasUrl && json.config.baseUrl) inputIasUrl.value = json.config.baseUrl;
+      if (selectIasKoneksi && json.config.koneksi) selectIasKoneksi.value = json.config.koneksi;
+      if (inputIasUser && json.config.username) inputIasUser.value = json.config.username;
+    }
+  } catch (err) {
+    console.error('Gagal memuat konfigurasi IAS:', err);
+  }
+}
+
+// Simpan Konfigurasi IAS
+if (btnSaveIasConfig) {
+  btnSaveIasConfig.addEventListener('click', async () => {
+    const origText = btnSaveIasConfig.innerHTML;
+    btnSaveIasConfig.disabled = true;
+    btnSaveIasConfig.innerHTML = '<span>⏳</span> Menyimpan...';
+
+    const payload = {};
+    if (inputIasUrl) payload.baseUrl = inputIasUrl.value.trim();
+    if (selectIasKoneksi) payload.koneksi = selectIasKoneksi.value;
+    if (inputIasUser) payload.username = inputIasUser.value.trim();
+    if (inputIasPassword && inputIasPassword.value.trim()) payload.password = inputIasPassword.value.trim();
+
+    try {
+      const res = await fetch('/api/ias/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('success', 'Konfigurasi Tersimpan', 'Pengaturan koneksi Web IAS berhasil disimpan dan siap digunakan.');
+        addIasLog('success', `💾 Konfigurasi IAS disimpan: URL = ${data.config.baseUrl}, User = ${data.config.username}`);
+      } else {
+        showAlert('error', 'Gagal Menyimpan', data.error || 'Terjadi kesalahan.');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnSaveIasConfig.disabled = false;
+      btnSaveIasConfig.innerHTML = origText;
+    }
+  });
+}
+
+// Uji Login Web IAS
+if (btnTestIasLogin) {
+  btnTestIasLogin.addEventListener('click', async () => {
+    const origText = btnTestIasLogin.innerHTML;
+    btnTestIasLogin.disabled = true;
+    btnTestIasLogin.innerHTML = '<span>⏳</span> Menguji...';
+
+    const payload = {};
+    if (inputIasUrl) payload.baseUrl = inputIasUrl.value.trim();
+    if (selectIasKoneksi) payload.koneksi = selectIasKoneksi.value;
+    if (inputIasUser) payload.username = inputIasUser.value.trim();
+    if (inputIasPassword && inputIasPassword.value.trim()) payload.password = inputIasPassword.value.trim();
+
+    try {
+      const res = await fetch('/api/ias/test-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('success', 'Uji Login Berhasil', `Koneksi dan login ke Web IAS (${payload.baseUrl || 'aktif'}) berhasil terhubung!`);
+        addIasLog('success', `🧪 Uji Login Web IAS BERHASIL!`);
+        await checkIasSessionStatus(false);
+      } else {
+        showAlert('error', 'Uji Login Gagal', data.error || 'Tidak dapat terhubung ke Web IAS.');
+        addIasLog('error', `❌ Uji Login GAGAL: ${data.error}`);
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnTestIasLogin.disabled = false;
+      btnTestIasLogin.innerHTML = origText;
+    }
+  });
 }
 
 // Unified IAS Period Selectors
@@ -1612,15 +1745,17 @@ async function triggerFetchRegisterLpp() {
 
   const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
   const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '01/09/2026';
+  const selectMenuEl = document.getElementById('selectRegisterLppMenu');
+  const selectedMenu = selectMenuEl ? selectMenuEl.value : 'LPP01';
 
-  addIasLog('info', `📊 Memulai pengambilan laporan Register LPP untuk Periode ${p1} s/d ${p2}...`);
+  addIasLog('info', `📊 Memulai pengambilan laporan Register LPP (${selectedMenu}) untuk Periode ${p1} s/d ${p2}...`);
 
   try {
     const res = await fetch('/api/ias/register-lpp/fetch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        menu: 'LPP01',
+        menu: selectedMenu,
         export_type: 'pdf',
         periode1: p1,
         periode2: p2,
@@ -1632,15 +1767,19 @@ async function triggerFetchRegisterLpp() {
     if (data.success) {
       applyLppDataToUi(data);
       // Auto-sync kroscek table
-      fetch('/api/ias/kroscek/sync-lpp01', { method: 'POST' })
-        .then(r => r.json())
-        .then(res => {
-          if (res.success && res.data) {
-            kroscekState = res.data;
-            renderKroscekTables();
-          }
-        }).catch(() => {});
-      showAlert('success', 'Register LPP Berhasil Diekstrak', `Berhasil mengekstrak ${data.totalCategories} kategori dan Grand Total sebagai data pembanding.`);
+      if (selectedMenu === 'LPP01') {
+        fetch('/api/ias/kroscek/sync-lpp01', { method: 'POST' })
+          .then(r => r.json())
+          .then(res => {
+            if (res.success && res.data) {
+              kroscekState = res.data;
+              renderKroscekTables();
+            }
+          }).catch(() => {});
+      } else {
+        loadKroscekData();
+      }
+      showAlert('success', 'Register LPP Berhasil Diekstrak', `Berhasil mengekstrak ${data.totalCategories} kategori dan Grand Total (${selectedMenu}) sebagai data pembanding.`);
     } else {
       renderTaskBadge(badgeRegisterLppStatus, 'ERROR');
       showAlert('error', 'Gagal Mengambil Register LPP', data.error || 'Terjadi kesalahan');
@@ -1824,8 +1963,9 @@ function renderKroscekTables() {
         <td style="padding: 6px 12px; font-weight: 600; color: ${row.alert ? '#ef4444' : 'var(--text-main)'};">
           ${escapeHtml(row.label)}
         </td>
-        <td style="padding: 6px 12px; text-align: right; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.08);">
-          ${formatRp(vLpp)}
+        <td style="padding: 4px 8px; text-align: right; background: rgba(16, 185, 129, 0.08);">
+          <input type="text" class="custom-input kroscek-lpp-input" data-key="${row.key}" value="${formatRp(vLpp)}"
+            style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 700; color: #10b981; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(16, 185, 129, 0.35);" title="Data LPP 01: ${escapeHtml(row.label)}">
         </td>
         <td style="padding: 6px 12px; color: var(--text-muted); font-size: 11px;">
           ${row.rumus ? `<span style="padding: 2px 6px; background: rgba(6, 182, 212, 0.1); border-radius: 4px; color: #06b6d4;">${escapeHtml(row.rumus)}</span>` : '-'}
@@ -1878,7 +2018,17 @@ function renderKroscekTables() {
 
   tbodyAntarLpp.innerHTML = antarHtml;
 
-  // Attach event listeners for real-time calculation
+  // Attach event listeners for real-time calculation (Data LPP 01, Pembanding, Antar LPP)
+  document.querySelectorAll('.kroscek-lpp-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const key = e.target.getAttribute('data-key');
+      const num = parseInputNumber(e.target.value);
+      kroscekState.lpp01[key] = num;
+      e.target.value = formatRp(num);
+      renderKroscekTables();
+    });
+  });
+
   document.querySelectorAll('.kroscek-pem-input').forEach(inp => {
     inp.addEventListener('input', (e) => {
       const key = e.target.getAttribute('data-key');
@@ -1921,27 +2071,30 @@ function renderKroscekTables() {
 
 const btnFetchPrevLpp = document.getElementById('btnFetchPrevLpp');
 
-// Button Fetch LPP Bulan Sebelumnya
+// Button Fetch LPP Bulan Sebelumnya (LPP 01, LPP 02, LPP 03)
 if (btnFetchPrevLpp) {
   btnFetchPrevLpp.addEventListener('click', async () => {
     const origText = btnFetchPrevLpp.innerHTML;
     btnFetchPrevLpp.disabled = true;
-    btnFetchPrevLpp.innerHTML = '<span>⏳</span> Mengambil LPP...';
+    btnFetchPrevLpp.innerHTML = '<span>⏳</span> Mengambil LPP Bulan Lalu...';
 
     const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
-    addIasLog('info', `📅 Memulai penarikan LPP Bulan Sebelumnya berdasarkan tanggal ${p1}...`);
+    addIasLog('info', `📅 Memulai penarikan data LPP 01, LPP 02, & LPP 03 Bulan Sebelumnya (patokan: ${p1})...`);
 
     try {
       const res = await fetch('/api/ias/kroscek/fetch-prev-lpp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ periode1: p1, menu: 'LPP01' })
+        body: JSON.stringify({ periode1: p1, menu: 'ALL' })
       });
       const json = await res.json();
       if (json.success && json.kroscekData) {
         kroscekState = json.kroscekData;
         renderKroscekTables();
-        showAlert('success', 'LPP Bulan Lalu Ditemukan', `Saldo Akhir LPP (${json.prevPeriode}): Rp ${json.saldoAkhirRp} berhasil dimasukkan ke kolom pembanding.`);
+        const r01 = (json.results?.lpp01 !== undefined ? json.results.lpp01 : 0).toLocaleString('id-ID');
+        const r02 = (json.results?.lpp02 !== undefined ? json.results.lpp02 : 0).toLocaleString('id-ID');
+        const r03 = (json.results?.lpp03 !== undefined ? json.results.lpp03 : 0).toLocaleString('id-ID');
+        showAlert('success', 'LPP Bulan Lalu Berhasil Ditarik', `Periode ${json.prevPeriode}:<br>• LPP 01 (Baik): Rp ${r01}<br>• LPP 02 (Retur): Rp ${r02}<br>• LPP 03 (Rusak): Rp ${r03}<br>Semua otomatis masuk ke Kroscek Antar LPP!`);
       } else {
         showAlert('error', 'Gagal Menarik LPP', json.error || 'Terjadi kesalahan');
       }
@@ -1950,6 +2103,49 @@ if (btnFetchPrevLpp) {
     } finally {
       btnFetchPrevLpp.disabled = false;
       btnFetchPrevLpp.innerHTML = origText;
+    }
+  });
+}
+
+const btnFetchNextLpp = document.getElementById('btnFetchNextLpp');
+
+// Button Fetch LPP Bulan Baru Setelah ME (LPP 01, LPP 02, LPP 03)
+if (btnFetchNextLpp) {
+  btnFetchNextLpp.addEventListener('click', async () => {
+    const origText = btnFetchNextLpp.innerHTML;
+    btnFetchNextLpp.disabled = true;
+    btnFetchNextLpp.innerHTML = '<span>⏳</span> Menarik LPP Bulan Baru...';
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    addIasLog('info', `⏭️ Memulai penarikan Saldo Awal LPP 01, LPP 02, & LPP 03 Bulan Baru setelah ME (patokan bulan: ${p1})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-next-lpp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, menu: 'ALL' })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        const r01 = (json.results?.lpp01 !== undefined ? json.results.lpp01 : 0).toLocaleString('id-ID');
+        const r02 = (json.results?.lpp02 !== undefined ? json.results.lpp02 : 0).toLocaleString('id-ID');
+        const r03 = (json.results?.lpp03 !== undefined ? json.results.lpp03 : 0).toLocaleString('id-ID');
+
+        if (!json.anyDataFound) {
+          showAlert('info', 'Status Bulan Baru di Web IAS', `Periode Bulan Baru (${json.nextPeriode}):<br>Belum ada data register yang terbentuk karena proses ME belum selesai dijalankan di Web IAS.<br><br><i>Catatan: Silakan klik tombol ini kembali setelah proses ME resmi ditutup di Web IAS.</i>`);
+        } else {
+          showAlert('success', 'LPP Bulan Baru Berhasil Ditarik', `Periode Bulan Baru (${json.nextPeriode}):<br>• Saldo Awal LPP 01: Rp ${r01}<br>• Saldo Awal LPP 02: Rp ${r02}<br>• Saldo Awal LPP 03: Rp ${r03}<br>Semua otomatis masuk ke kolom Saldo Awal Bulan Baru di Kroscek Antar LPP!`);
+        }
+      } else {
+        showAlert('error', 'Gagal Menarik LPP Bulan Baru', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchNextLpp.disabled = false;
+      btnFetchNextLpp.innerHTML = origText;
     }
   });
 }
@@ -1987,6 +2183,120 @@ if (btnFetchDaftarPembelian) {
     } finally {
       btnFetchDaftarPembelian.disabled = false;
       btnFetchDaftarPembelian.innerHTML = origText;
+    }
+  });
+}
+
+const btnFetchLaporanPenjualan = document.getElementById('btnFetchLaporanPenjualan');
+
+// Button Fetch Laporan Penjualan (HPP Rata-rata)
+if (btnFetchLaporanPenjualan) {
+  btnFetchLaporanPenjualan.addEventListener('click', async () => {
+    const origText = btnFetchLaporanPenjualan.innerHTML;
+    btnFetchLaporanPenjualan.disabled = true;
+    btnFetchLaporanPenjualan.innerHTML = '<span>⏳</span> Menarik Penjualan...';
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '30/09/2026';
+    addIasLog('info', `📈 Memulai penarikan Laporan Penjualan HPP Rata2 (${p1} s/d ${p2})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-penjualan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, periode2: p2 })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        const hppStr = Number(json.hppRata2).toLocaleString('id-ID');
+        const bersihStr = Number(json.penjualanBersih).toLocaleString('id-ID');
+        showAlert('success', 'Laporan Penjualan Berhasil Ditarik', `HPP Rata2 = Rp ${hppStr} (Penjualan Bersih: Rp ${bersihStr}) berhasil diisi ke kolom Pembanding Penjualan.`);
+      } else {
+        showAlert('error', 'Gagal Menarik Penjualan', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchLaporanPenjualan.disabled = false;
+      btnFetchLaporanPenjualan.innerHTML = origText;
+    }
+  });
+}
+
+const btnFetchLpp02 = document.getElementById('btnFetchLpp02');
+
+// Button Fetch LPP 02 (Retur / LPP08)
+if (btnFetchLpp02) {
+  btnFetchLpp02.addEventListener('click', async () => {
+    const origText = btnFetchLpp02.innerHTML;
+    btnFetchLpp02.disabled = true;
+    btnFetchLpp02.innerHTML = '<span>⏳</span> Menarik LPP 02...';
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '30/09/2026';
+    addIasLog('info', `📑 Memulai penarikan Data LPP 02 Retur (${p1} s/d ${p2})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-lpp02', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, periode2: p2 })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        const saStr = Number(json.saldoAwalNum).toLocaleString('id-ID');
+        const sakStr = Number(json.saldoAkhirNum).toLocaleString('id-ID');
+        showAlert('success', 'LPP 02 Berhasil Ditarik', `Saldo Awal = Rp ${saStr} | Saldo Akhir = Rp ${sakStr} berhasil disinkronkan ke tabel Kroscek Antar LPP.`);
+      } else {
+        showAlert('error', 'Gagal Menarik LPP 02', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchLpp02.disabled = false;
+      btnFetchLpp02.innerHTML = origText;
+    }
+  });
+}
+
+const btnFetchLpp03 = document.getElementById('btnFetchLpp03');
+
+// Button Fetch LPP 03 (Rusak / LPP10)
+if (btnFetchLpp03) {
+  btnFetchLpp03.addEventListener('click', async () => {
+    const origText = btnFetchLpp03.innerHTML;
+    btnFetchLpp03.disabled = true;
+    btnFetchLpp03.innerHTML = '<span>⏳</span> Menarik LPP 03...';
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '30/09/2026';
+    addIasLog('info', `📑 Memulai penarikan Data LPP 03 Rusak (${p1} s/d ${p2})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/fetch-lpp03', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, periode2: p2 })
+      });
+      const json = await res.json();
+      if (json.success && json.kroscekData) {
+        kroscekState = json.kroscekData;
+        renderKroscekTables();
+        const saStr = Number(json.saldoAwalNum).toLocaleString('id-ID');
+        const sakStr = Number(json.saldoAkhirNum).toLocaleString('id-ID');
+        showAlert('success', 'LPP 03 Berhasil Ditarik', `Saldo Awal = Rp ${saStr} | Saldo Akhir = Rp ${sakStr} berhasil disinkronkan ke tabel Kroscek Antar LPP.`);
+      } else {
+        showAlert('error', 'Gagal Menarik LPP 03', json.error || 'Terjadi kesalahan');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnFetchLpp03.disabled = false;
+      btnFetchLpp03.innerHTML = origText;
     }
   });
 }
@@ -2038,6 +2348,7 @@ initAdminNav();
 populateDefaultDates();
 loadConfig();
 loadIasConfig();
+checkIasSessionStatus(false);
 loadLatestRegisterLpp();
 loadKroscekData();
 

@@ -1,6 +1,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const zlib = require('zlib');
 const { addIasLog: addLog } = require('../utils/logger');
 
 class IasAutomationService {
@@ -8,6 +9,7 @@ class IasAutomationService {
     this.configFile = path.join(__dirname, '../../config.json');
     this.routesFile = path.join(__dirname, '../../ias_all_routes.json');
     this.activeTask = null; // tracking running task
+    this.persistentSession = null; // Reusable active Playwright browser session
     this.sessionState = {
       isConnected: false,
       status: 'DISCONNECTED',
@@ -21,115 +23,102 @@ class IasAutomationService {
   }
 
   getSessionStatus() {
-    return this.sessionState;
+    const isAlive = !!(this.persistentSession && this.persistentSession.browser && this.persistentSession.browser.isConnected());
+    return {
+      ...this.sessionState,
+      isConnected: isAlive
+    };
   }
 
   /**
-   * Auto-connect / login in background when opening the menu
+   * Mengembalikan sesi browser yang sedang aktif atau membuat sesi baru jika belum ada
+   */
+  async getOrCreateSession(customConfig = null) {
+    if (this.persistentSession && this.persistentSession.browser && this.persistentSession.browser.isConnected()) {
+      try {
+        if (this.persistentSession.page && !this.persistentSession.page.isClosed()) {
+          const url = this.persistentSession.page.url();
+          if (!url.includes('/login')) {
+            return this.persistentSession;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Buat sesi browser baru yang persisten
+    const session = await this.createSession(customConfig);
+    this.persistentSession = session;
+    this.sessionState = {
+      isConnected: true,
+      status: 'CONNECTED',
+      lastConnected: new Date().toLocaleTimeString('id-ID'),
+      lastConnectedTimestamp: Date.now(),
+      user: session.config.username,
+      koneksi: (session.config.koneksi || '').toUpperCase(),
+      url: session.page.url()
+    };
+    return this.persistentSession;
+  }
+
+  /**
+   * Auto-connect / check in background when opening the menu
    */
   async autoConnectInBackground(customConfig = null) {
-    // If already connected within the last 5 minutes, return current session
-    if (this.sessionState.isConnected && this.sessionState.lastConnectedTimestamp && (Date.now() - this.sessionState.lastConnectedTimestamp < 5 * 60 * 1000)) {
+    if (this.getSessionStatus().isConnected) {
       return {
         success: true,
         alreadyConnected: true,
         session: this.sessionState
       };
     }
-
-    if (this.connectionPromise) {
-      return this.connectionPromise;
-    }
-
-    this.sessionState.status = 'CONNECTING';
-    addLog('info', `[IAS] 🌐 Menjalankan auto-login Web IAS di latar belakang...`);
-
-    this.connectionPromise = (async () => {
-      let session = null;
-      try {
-        session = await this.createSession(customConfig);
-        const currentUrl = session.page.url();
-        const config = session.config;
-
-        this.sessionState = {
-          isConnected: true,
-          status: 'CONNECTED',
-          lastConnected: new Date().toLocaleTimeString('id-ID'),
-          lastConnectedTimestamp: Date.now(),
-          user: config.username,
-          koneksi: (config.koneksi || '').toUpperCase(),
-          url: currentUrl
-        };
-
-        addLog('success', `[IAS] ✅ Auto-Login Latar Belakang BERHASIL! (User: ${config.username}, Koneksi: ${this.sessionState.koneksi})`);
-
-        // Fetch live tasks status using the same session
-        const tasksStatus = await this.getTasksLiveStatus(customConfig, session);
-
-        return {
-          success: true,
-          alreadyConnected: false,
-          session: this.sessionState,
-          tasks: tasksStatus
-        };
-      } catch (err) {
-        this.sessionState = {
-          isConnected: false,
-          status: 'ERROR',
-          lastConnected: null,
-          lastConnectedTimestamp: null,
-          error: err.message
-        };
-        addLog('error', `[IAS] ❌ Auto-Login Latar Belakang gagal: ${err.message}`);
-        return {
-          success: false,
-          error: err.message,
-          session: this.sessionState
-        };
-      } finally {
-        if (session && session.browser) {
-          await session.browser.close();
-        }
-        this.connectionPromise = null;
-      }
-    })();
-
-    return this.connectionPromise;
+    return {
+      success: false,
+      alreadyConnected: false,
+      session: this.sessionState,
+      message: 'Web IAS belum login. Silakan klik tombol Login Web IAS.'
+    };
   }
 
   getConfig() {
+    let cfg = {};
     try {
       if (fs.existsSync(this.configFile)) {
         const data = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
-        return data.iasConfig || {
-          baseUrl: 'http://172.31.146.190',
-          koneksi: 'sim',
-          username: 'RIS',
-          password: '0' + '61201',
-          branchCode: '1R',
-          cabang: 'spibdl1r',
-          autoResetSession: true
-        };
+        cfg = data.iasConfig || {};
       }
     } catch (e) {
       addLog('error', `[IAS] Gagal membaca iasConfig: ${e.message}`);
     }
     return {
-      baseUrl: 'http://172.31.146.190',
-      koneksi: 'sim',
-      username: 'RIS',
-      password: '0' + '61201',
-      branchCode: '1R',
-      cabang: 'spibdl1r',
-      autoResetSession: true
+      baseUrl: cfg.baseUrl || process.env.IAS_BASE_URL || 'http://172.31.146.190',
+      koneksi: cfg.koneksi || process.env.IAS_KONEKSI || 'sim',
+      username: cfg.username || process.env.IAS_USERNAME || 'RIS',
+      password: cfg.password || process.env.IAS_PASSWORD || '061201',
+      branchCode: cfg.branchCode || process.env.IAS_BRANCH_CODE || '1R',
+      cabang: cfg.cabang || process.env.IAS_CABANG || 'spibdl1r',
+      autoResetSession: cfg.autoResetSession !== undefined ? cfg.autoResetSession : true,
+      periode1: cfg.periode1,
+      periode2: cfg.periode2
     };
   }
 
   saveConfig(newConfig) {
     try {
-      const data = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+      let data = {};
+      if (fs.existsSync(this.configFile)) {
+        data = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+      }
       data.iasConfig = { ...data.iasConfig, ...newConfig };
       fs.writeFileSync(this.configFile, JSON.stringify(data, null, 2));
+
+      // Jika konfigurasi login / URL berubah, reset sesi browser yang aktif
+      if (newConfig.baseUrl || newConfig.username || newConfig.password || newConfig.koneksi) {
+        if (this.activeSession) {
+          this.closeSession().catch(() => {});
+        }
+      }
+
+      addLog('success', `[IAS] 💾 Konfigurasi IAS berhasil disimpan (URL: ${data.iasConfig.baseUrl}, User: ${data.iasConfig.username}, Koneksi: ${data.iasConfig.koneksi})`);
       return data.iasConfig;
     } catch (e) {
       addLog('error', `[IAS] Gagal menyimpan iasConfig: ${e.message}`);
@@ -251,60 +240,100 @@ class IasAutomationService {
   }
 
   /**
-   * Test login to Web IAS
+   * Login to Web IAS and keep the browser session alive for subsequent requests
    */
   async login(customConfig = null) {
-    let session = null;
     try {
-      session = await this.createSession(customConfig);
+      addLog('info', `[IAS] 🌐 Menghubungkan dan login ke Web IAS...`);
+      const session = await this.getOrCreateSession(customConfig);
       const currentUrl = session.page.url();
       const title = await session.page.title();
       const cookies = await session.context.cookies();
 
+      addLog('success', `[IAS] ✅ Berhasil login ke Web IAS! Sesi browser dipertahankan aktif.`);
       return {
         success: true,
         url: currentUrl,
         title: title,
         cookies: cookies,
-        message: `Berhasil terhubung dan login ke Web IAS (${(session.config.koneksi || '').toUpperCase()} - ${session.config.username})`
+        message: `Berhasil terhubung dan login ke Web IAS (${(session.config.koneksi || '').toUpperCase()} - ${session.config.username})`,
+        session: this.sessionState
       };
     } catch (err) {
-      addLog('error', `[IAS] ❌ Uji login gagal: ${err.message}`);
+      this.sessionState.isConnected = false;
+      this.sessionState.status = 'ERROR';
+      addLog('error', `[IAS] ❌ Login gagal: ${err.message}`);
       return {
         success: false,
-        error: err.message
+        error: err.message,
+        session: this.sessionState
       };
-    } finally {
-      if (session && session.browser) {
-        await session.browser.close();
-      }
     }
   }
 
   /**
-   * Check current live status for both Hitstok and LPP
+   * Logout from Web IAS and close active browser session
+   */
+  async logout() {
+    try {
+      if (this.persistentSession && this.persistentSession.browser) {
+        await this.persistentSession.browser.close().catch(() => {});
+      }
+    } finally {
+      this.persistentSession = null;
+      this.sessionState = {
+        isConnected: false,
+        status: 'DISCONNECTED',
+        lastConnected: null,
+        lastConnectedTimestamp: null,
+        user: null,
+        koneksi: null,
+        url: null
+      };
+      addLog('info', `[IAS] 🚪 Sesi Web IAS telah diputuskan (Logout).`);
+      return { success: true };
+    }
+  }
+
+  /**
+   * Check current live status for both Hitstok and LPP.
+   * DOES NOT launch a browser if session is disconnected (returns cached info immediately).
    */
   async getTasksLiveStatus(customConfig = null, existingSession = null) {
-    let session = existingSession;
-    let shouldCloseSession = false;
+    const session = existingSession || this.persistentSession;
+
+    // Read last run info from config.json
+    let lastHitstokRun = null;
+    let lastLppRun = null;
+    if (fs.existsSync(this.configFile)) {
+      const cfg = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
+      lastHitstokRun = cfg.lastHitstokRun || null;
+      lastLppRun = cfg.lastLppRun || null;
+    }
+
+    // If no active session, DO NOT launch a browser! Return cached info instantly.
+    if (!session || !session.browser || !session.browser.isConnected()) {
+      return {
+        success: true,
+        isConnected: false,
+        lastHitstokRun,
+        lastLppRun
+      };
+    }
+
     try {
-      if (!session) {
-        session = await this.createSession(customConfig);
-        shouldCloseSession = true;
-      }
       const { page, baseUrl } = session;
 
       // 1. Check Hitstok
-      addLog('info', `[IAS] Mengambil status live Hitung Ulang Stock...`);
       await page.goto(`${baseUrl}/bo/proses/hitungulangstock`, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1000);
 
       const hitstokStatus = await page.evaluate(async () => {
         const p1 = $('#periode1').val();
         const p2 = $('#periode2').val();
         return new Promise((resolve) => {
           $.ajax({
-            url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
+            url: '/bo/proses/hitungulangstock/get-status',
             type: 'get',
             data: { periode1: p1, periode2: p2 },
             success: (res) => resolve({ periode1: p1, periode2: p2, ...res }),
@@ -314,16 +343,15 @@ class IasAutomationService {
       });
 
       // 2. Check LPP
-      addLog('info', `[IAS] Mengambil status live Proses LPP...`);
       await page.goto(`${baseUrl}/bo/lpp/proses-lpp`, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1000);
 
       const lppStatus = await page.evaluate(async () => {
         const p1 = $('#periode1').val();
         const p2 = $('#periode2').val();
         return new Promise((resolve) => {
           $.ajax({
-            url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
+            url: '/bo/lpp/proses-lpp/get-status',
             type: 'get',
             data: { periode1: p1, periode2: p2 },
             success: (res) => resolve({ periode1: p1, periode2: p2, ...res }),
@@ -332,18 +360,10 @@ class IasAutomationService {
         });
       });
 
-      // Read last run info from config.json
-      let lastHitstokRun = null;
-      let lastLppRun = null;
-      if (fs.existsSync(this.configFile)) {
-        const cfg = JSON.parse(fs.readFileSync(this.configFile, 'utf8'));
-        lastHitstokRun = cfg.lastHitstokRun || null;
-        lastLppRun = cfg.lastLppRun || null;
-      }
-
       addLog('success', `[IAS] ✅ Berhasil memperbarui status Hitstok dan LPP.`);
       return {
         success: true,
+        isConnected: true,
         hitstok: hitstokStatus,
         lpp: lppStatus,
         lastHitstokRun,
@@ -351,15 +371,14 @@ class IasAutomationService {
       };
 
     } catch (err) {
-      addLog('error', `[IAS] Gagal mengambil status tasks: ${err.message}`);
+      addLog('error', `[IAS] Gagal mengambil status live tasks: ${err.message}`);
       return {
         success: false,
-        error: err.message
+        isConnected: true,
+        error: err.message,
+        lastHitstokRun,
+        lastLppRun
       };
-    } finally {
-      if (shouldCloseSession && session && session.browser) {
-        await session.browser.close();
-      }
     }
   }
 
@@ -374,10 +393,10 @@ class IasAutomationService {
 
     this.activeTask = 'HITUNG_ULANG_STOCK';
     let session = null;
-    const totalPasses = opts.iterations || 2;
+    const totalPasses = opts.iterations || 1;
 
     try {
-      session = await this.createSession();
+      session = await this.getOrCreateSession();
       const { page, baseUrl } = session;
 
       addLog('info', `[IAS] [TASK HITSTOK] Membuka halaman Hitung Ulang Stock...`);
@@ -429,7 +448,7 @@ class IasAutomationService {
           return new Promise((resolve) => {
             if (typeof ajaxSetup === 'function') ajaxSetup();
             $.ajax({
-              url: 'http://172.31.146.190/bo/proses/hitungulangstock/proses-ulang',
+              url: '/bo/proses/hitungulangstock/proses-ulang',
               type: 'post',
               data: { periode1: p1, periode2: p2 },
               success: (res) => resolve(res),
@@ -444,7 +463,7 @@ class IasAutomationService {
           return new Promise((resolve) => {
             if (typeof ajaxSetup === 'function') ajaxSetup();
             $.ajax({
-              url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock',
+              url: '/bo/proses/hitungulangstock/hitung-ulang-stock',
               type: 'post',
               data: { periode1: p1, periode2: p2, plu1: plu1, plu2: plu2 },
               success: (res) => resolve({ ok: true, res }),
@@ -462,7 +481,7 @@ class IasAutomationService {
           return new Promise((resolve) => {
             if (typeof ajaxSetup === 'function') ajaxSetup();
             $.ajax({
-              url: 'http://172.31.146.190/bo/proses/hitungulangstock/hitung-ulang-stock-cmo',
+              url: '/bo/proses/hitungulangstock/hitung-ulang-stock-cmo',
               type: 'post',
               data: { periode1: p1, periode2: p2, plu1: plu1, plu2: plu2 },
               success: (res) => resolve({ ok: true, res }),
@@ -487,7 +506,7 @@ class IasAutomationService {
             return new Promise((resolve) => {
               if (typeof ajaxSetup === 'function') ajaxSetup();
               $.ajax({
-                url: 'http://172.31.146.190/bo/proses/hitungulangstock/get-status',
+                url: '/bo/proses/hitungulangstock/get-status',
                 type: 'get',
                 data: { periode1: p1, periode2: p2 },
                 success: (res) => resolve(res),
@@ -516,7 +535,7 @@ class IasAutomationService {
             return new Promise((resolve) => {
               if (typeof ajaxSetup === 'function') ajaxSetup();
               $.ajax({
-                url: 'http://172.31.146.190/bo/proses/hitungulangstock/update-online-stock-spi',
+                url: '/bo/proses/hitungulangstock/update-online-stock-spi',
                 type: 'post',
                 success: (res) => resolve(res),
                 error: (err) => resolve({ error: err.statusText })
@@ -566,15 +585,11 @@ class IasAutomationService {
       throw err;
     } finally {
       this.activeTask = null;
-      if (session && session.browser) {
-        await session.browser.close();
-      }
     }
   }
 
   /**
    * TASK 2: Run Proses LPP (Bulanan atau Harian)
-   * Dilakukan 2 putaran (2 passes) sesuai SOP
    * @param {Object} opts { mode: 'bulanan' | 'harian', periode1, periode2, tanggalSo, khususAudit, iterations }
    */
   async runProsesLPP(opts = {}) {
@@ -584,10 +599,10 @@ class IasAutomationService {
 
     this.activeTask = 'PROSES_LPP';
     let session = null;
-    const totalPasses = opts.iterations || 2;
+    const totalPasses = opts.iterations || 1;
 
     try {
-      session = await this.createSession();
+      session = await this.getOrCreateSession();
       const { page, baseUrl } = session;
 
       const isHarian = opts.mode === 'harian';
@@ -642,7 +657,7 @@ class IasAutomationService {
             return new Promise((resolve) => {
               if (typeof ajaxSetup === 'function') ajaxSetup();
               $.ajax({
-                url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses-ulang',
+                url: '/bo/lpp/proses-lpp/proses-ulang',
                 type: 'post',
                 data: { periode1: p1, periode2: p2 },
                 success: (res) => resolve(res),
@@ -656,7 +671,7 @@ class IasAutomationService {
             return new Promise((resolve) => {
               if (typeof ajaxSetup === 'function') ajaxSetup();
               $.ajax({
-                url: 'http://172.31.146.190/bo/lpp/proses-lpp/proses',
+                url: '/bo/lpp/proses-lpp/proses',
                 type: 'post',
                 data: { periode1: p1, periode2: p2 },
                 success: (res) => resolve({ ok: true, res }),
@@ -681,7 +696,7 @@ class IasAutomationService {
               return new Promise((resolve) => {
                 if (typeof ajaxSetup === 'function') ajaxSetup();
                 $.ajax({
-                  url: 'http://172.31.146.190/bo/lpp/proses-lpp/get-status',
+                  url: '/bo/lpp/proses-lpp/get-status',
                   type: 'get',
                   data: { periode1: p1, periode2: p2 },
                   success: (res) => resolve(res),
@@ -755,9 +770,6 @@ class IasAutomationService {
       throw err;
     } finally {
       this.activeTask = null;
-      if (session && session.browser) {
-        await session.browser.close();
-      }
     }
   }
 
@@ -835,7 +847,7 @@ class IasAutomationService {
 
       addLog('info', `[IAS] [REGISTER LPP] Membuka sesi dan mengambil laporan Register LPP (${menu}, Periode: ${p1} s/d ${p2})...`);
 
-      session = await this.createSession();
+      session = await this.getOrCreateSession();
       const page = session.page;
 
       const response = await page.goto(cetakUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -888,6 +900,69 @@ class IasAutomationService {
           continue;
         }
 
+        // ====================================================================
+        // Branch 1: Menu LPP08 (Retur) & LPP10 (Rusak) -> 12/13 Kolom
+        // ====================================================================
+        if (menu === 'LPP08' || menu === 'LPP10') {
+          // Summary row: SUB TOTAL DEPT, SUB TOTAL DIVISI, TOTAL SELURUHNYA
+          if (col0.toUpperCase().startsWith('SUB TOTAL') || col0.toUpperCase().startsWith('TOTAL')) {
+            const isGrandTotal = col0.toUpperCase().startsWith('TOTAL SELURUHNYA');
+            const isDivisi = col0.toUpperCase().includes('DIVISI');
+
+            const summaryItem = {
+              type: isGrandTotal ? 'GRAND_TOTAL' : (isDivisi ? 'SUBTOTAL_DIVISI' : 'SUBTOTAL_DEPT'),
+              label: col0,
+              divisi: currentDivisi,
+              departemen: currentDepartemen,
+              saldoAwal: parseCell(tds[1]),
+              penerimaanBaik: stripTags(tds[2]),
+              penerimaanRusak: stripTags(tds[3]),
+              pengeluaranSupplier: stripTags(tds[4]),
+              hilang: stripTags(tds[5]),
+              pengeluaranLainBaik: stripTags(tds[6]),
+              pengeluaranLainRusak: stripTags(tds[7]),
+              so: stripTags(tds[8]),
+              penyesuaian: stripTags(tds[9]),
+              koreksi: stripTags(tds[10]),
+              saldoAkhir: parseCell(tds[11])
+            };
+
+            if (isGrandTotal) {
+              grandTotal = summaryItem;
+            } else {
+              summaries.push(summaryItem);
+            }
+            continue;
+          }
+
+          // Category data row (13 columns)
+          if (tds.length >= 12) {
+            const rowItem = {
+              divisi: currentDivisi,
+              departemen: currentDepartemen,
+              kode: col0,
+              namaKategori: col1,
+              saldoAwal: parseCell(tds[2]),
+              penerimaanBaik: stripTags(tds[3]),
+              penerimaanRusak: stripTags(tds[4]),
+              pengeluaranSupplier: stripTags(tds[5]),
+              hilang: stripTags(tds[6]),
+              pengeluaranLainBaik: stripTags(tds[7]),
+              pengeluaranLainRusak: stripTags(tds[8]),
+              so: stripTags(tds[9]),
+              penyesuaian: stripTags(tds[10]),
+              koreksi: stripTags(tds[11]),
+              saldoAkhir: parseCell(tds[12])
+            };
+
+            categories.push(rowItem);
+            continue;
+          }
+        }
+
+        // ====================================================================
+        // Branch 2: Menu LPP01 (Baik) -> 17/18 Kolom
+        // ====================================================================
         // Summary row: SUB TOTAL DEPT, SUB TOTAL DIVISI, TOTAL SELURUHNYA
         if (col0.toUpperCase().startsWith('SUB TOTAL') || col0.toUpperCase().startsWith('TOTAL')) {
           const isGrandTotal = col0.toUpperCase().startsWith('TOTAL SELURUHNYA');
@@ -953,6 +1028,45 @@ class IasAutomationService {
         }
       }
 
+      // Fallback: Jika baris TOTAL SELURUHNYA tidak ada, hitung dari agregat divisi/departemen
+      if (!grandTotal && summaries.length > 0) {
+        const divSummaries = summaries.filter(s => s.type === 'SUBTOTAL_DIVISI');
+        const itemsToSum = divSummaries.length > 0 ? divSummaries : summaries;
+
+        const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+        let sumAwal = 0;
+        let sumAkhir = 0;
+        let sumPenjualan = 0;
+        let sumMurni = 0;
+        let sumBonus = 0;
+        let sumBaik = 0;
+        let sumRusak = 0;
+
+        itemsToSum.forEach(item => {
+          sumAwal += parseNum(item.saldoAwal?.rp || item.saldoAwal);
+          sumAkhir += parseNum(item.saldoAkhir?.rp || item.saldoAkhir);
+          if (item.penjualan) sumPenjualan += parseNum(item.penjualan);
+          if (item.pembelianMurni) sumMurni += parseNum(item.pembelianMurni);
+          if (item.pembelianBonus) sumBonus += parseNum(item.pembelianBonus);
+          if (item.penerimaanBaik) sumBaik += parseNum(item.penerimaanBaik);
+          if (item.penerimaanRusak) sumRusak += parseNum(item.penerimaanRusak);
+        });
+
+        grandTotal = {
+          type: 'GRAND_TOTAL',
+          label: 'TOTAL SELURUHNYA',
+          divisi: 'ALL',
+          departemen: 'ALL',
+          saldoAwal: { rp: sumAwal.toLocaleString('id-ID'), qty: '0', raw: String(sumAwal) },
+          saldoAkhir: { rp: sumAkhir.toLocaleString('id-ID'), qty: '0', raw: String(sumAkhir) },
+          penjualan: sumPenjualan.toLocaleString('id-ID'),
+          pembelianMurni: sumMurni.toLocaleString('id-ID'),
+          pembelianBonus: sumBonus.toLocaleString('id-ID'),
+          penerimaanBaik: sumBaik.toLocaleString('id-ID'),
+          penerimaanRusak: sumRusak.toLocaleString('id-ID')
+        };
+      }
+
       // Metadata dari header teks laporan
       const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
       const titleText = titleMatch ? stripTags(titleMatch[1]) : 'POSISI & MUTASI PERSEDIAAN BARANG BAIK';
@@ -1005,6 +1119,65 @@ class IasAutomationService {
         }
       }
 
+      // Sinkronisasi otomatis ke Kroscek Data jika menu LPP08 (LPP-02) atau LPP10 (LPP-03)
+      const currentMEPrefix = (config.periode1 || '01/09/2026').substring(3); // e.g. "09/2026"
+      const reportMonthPrefix = p1.substring(3); // e.g. "08/2026" or "09/2026"
+      const isNextMonth = Boolean(opts && opts.isNextMonth);
+      const isPastMonth = !isNextMonth && Boolean((opts && opts.isPrevMonth) || (reportMonthPrefix !== currentMEPrefix));
+
+      if (isNextMonth) {
+        const kData = this.getKroscekData();
+        const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+        const sa = parseNum(grandTotal?.saldoAwal?.rp || grandTotal?.saldoAwal);
+        if (menu === 'LPP08') {
+          kData.antarLpp.lpp02_next_awal = sa;
+        } else if (menu === 'LPP10') {
+          kData.antarLpp.lpp03_next_awal = sa;
+        } else {
+          kData.antarLpp.lpp01_next_awal = sa;
+        }
+        this.saveKroscekData(kData);
+        addLog('success', `[IAS] 🔄 Sinkronisasi Saldo Awal LPP (${menu}) Bulan Baru ke Kroscek Antar LPP: Rp ${sa.toLocaleString('id-ID')}`);
+      } else if (menu === 'LPP08') {
+        const kData = this.getKroscekData();
+        const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+        const sa = parseNum(grandTotal?.saldoAwal?.rp || grandTotal?.saldoAwal);
+        const sak = parseNum(grandTotal?.saldoAkhir?.rp || grandTotal?.saldoAkhir);
+        const pb = parseNum(grandTotal?.penerimaanBaik);
+
+        if (isPastMonth) {
+          kData.antarLpp.lpp02_prev = sak;
+          this.saveKroscekData(kData);
+          addLog('success', `[IAS] 🔄 Sinkronisasi Saldo Akhir LPP 02 (Retur) Bulan Lalu ke Kroscek Antar LPP (Rp ${sak.toLocaleString('id-ID')}) berhasil!`);
+        } else {
+          kData.antarLpp.lpp02_me_awal = sa;
+          kData.antarLpp.lpp02_me_akhir = sak;
+          kData.lpp02_penerimaanBaik = pb;
+          kData.pembanding.pengeluaranLain = pb + (kData.lpp03_penerimaanBaik || 0); // BA Retur IDM = 0
+          this.saveKroscekData(kData);
+          addLog('success', `[IAS] 🔄 Sinkronisasi nilai LPP 02 (Retur) ke Kroscek Antar LPP & Pengeluaran Lain Pembanding (Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}) berhasil!`);
+        }
+      } else if (menu === 'LPP10') {
+        const kData = this.getKroscekData();
+        const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+        const sa = parseNum(grandTotal?.saldoAwal?.rp || grandTotal?.saldoAwal);
+        const sak = parseNum(grandTotal?.saldoAkhir?.rp || grandTotal?.saldoAkhir);
+        const pb = parseNum(grandTotal?.penerimaanBaik);
+
+        if (isPastMonth) {
+          kData.antarLpp.lpp03_prev = sak;
+          this.saveKroscekData(kData);
+          addLog('success', `[IAS] 🔄 Sinkronisasi Saldo Akhir LPP 03 (Rusak) Bulan Lalu ke Kroscek Antar LPP (Rp ${sak.toLocaleString('id-ID')}) berhasil!`);
+        } else {
+          kData.antarLpp.lpp03_me_awal = sa;
+          kData.antarLpp.lpp03_me_akhir = sak;
+          kData.lpp03_penerimaanBaik = pb;
+          kData.pembanding.pengeluaranLain = (kData.lpp02_penerimaanBaik || 0) + pb; // BA Retur IDM = 0
+          this.saveKroscekData(kData);
+          addLog('success', `[IAS] 🔄 Sinkronisasi nilai LPP 03 (Rusak) ke Kroscek Antar LPP & Pengeluaran Lain Pembanding (Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}) berhasil!`);
+        }
+      }
+
       addLog('success', `[IAS] ✅ [REGISTER LPP] Sukses mengekstrak ${categories.length} kategori, ${summaries.length} subtotal, dan Grand Total (Saldo Awal: Rp ${grandTotal?.saldoAwal?.rp || 0}, Saldo Akhir: Rp ${grandTotal?.saldoAkhir?.rp || 0})!`);
 
       return resultPayload;
@@ -1014,9 +1187,6 @@ class IasAutomationService {
       throw err;
     } finally {
       this.activeTask = null;
-      if (session && session.browser) {
-        await session.browser.close();
-      }
     }
   }
 
@@ -1119,7 +1289,26 @@ class IasAutomationService {
 
   syncKroscekFromLpp01(targetData = null) {
     const data = targetData || this.getKroscekData();
-    const regLpp = this.getLatestRegisterLPP();
+    let regLpp = this.getLatestRegisterLPP();
+
+    // Jika register LPP kosong atau mutasinya 0, periksa data_register_lpp_prev.json
+    const isMutasiEmpty = !regLpp || !regLpp.grandTotal || (
+      (regLpp.grandTotal.pembelianMurni === '0' || !regLpp.grandTotal.pembelianMurni) &&
+      (regLpp.grandTotal.penjualan === '0' || !regLpp.grandTotal.penjualan)
+    );
+
+    if (isMutasiEmpty) {
+      const prevPath = path.join(__dirname, '../../data_register_lpp_prev.json');
+      if (fs.existsSync(prevPath)) {
+        try {
+          const prevLpp = JSON.parse(fs.readFileSync(prevPath, 'utf8'));
+          if (prevLpp && prevLpp.grandTotal) {
+            regLpp = prevLpp;
+          }
+        } catch (_) {}
+      }
+    }
+
     if (!regLpp || !regLpp.grandTotal) return data;
 
     const gt = regLpp.grandTotal;
@@ -1134,7 +1323,8 @@ class IasAutomationService {
     data.periode = regLpp.periode || data.periode;
     data.lpp01 = {
       ...data.lpp01,
-      saldoAwalBulanME: saldoAwal,
+      saldoAkhirSebelumME: data.lpp01.saldoAkhirSebelumME || saldoAkhir || saldoAwal,
+      saldoAwalBulanME: data.lpp01.saldoAwalBulanME || saldoAkhir || saldoAwal,
       pembelianMurni: parseNum(gt.pembelianMurni || gt.murni),
       pembelianBonus: parseNum(gt.pembelianBonus || gt.bonus),
       transferIn: parseNum(gt.transferIn),
@@ -1147,30 +1337,34 @@ class IasAutomationService {
       hilang: parseNum(gt.hilang),
       pengeluaranLain: parseNum(gt.pengeluaranLain),
       so: parseNum(gt.so),
+      intransit: parseNum(gt.intransit || 0),
       penyesuaian: parseNum(gt.penyesuaian),
       koreksi: parseNum(gt.koreksi),
       saldoAkhirBulanME: saldoAkhir
     };
 
     // Auto-update saldo awal & akhir pada antarLpp jika belum diisi manual
-    data.antarLpp.lpp01_me_awal = saldoAwal;
     if (data.lpp01.saldoAkhirSebelumME) {
       data.pembanding.saldoAwalBulanME = data.lpp01.saldoAkhirSebelumME;
       data.pembanding.saldoAkhirSebelumME = data.lpp01.saldoAkhirSebelumME;
       data.antarLpp.lpp01_prev = data.lpp01.saldoAkhirSebelumME;
+      data.antarLpp.lpp01_me_awal = data.lpp01.saldoAkhirSebelumME;
     }
-    if (!data.antarLpp.lpp01_me_akhir) data.antarLpp.lpp01_me_akhir = saldoAkhir;
+    if (saldoAkhir) {
+      data.antarLpp.lpp01_me_akhir = saldoAkhir;
+      data.antarLpp.lpp01_next_awal = saldoAkhir;
+    }
 
     const kPath = this.getKroscekFilePath();
     fs.writeFileSync(kPath, JSON.stringify(data, null, 2));
-    addLog('success', `[IAS] 🔄 Sinkronisasi nilai Grand Total LPP 01 ke Template Kroscek berhasil (Saldo: Rp ${gt.saldoAwal?.rp || 0})`);
+    addLog('success', `[IAS] 🔄 Sinkronisasi nilai Grand Total LPP 01 ke Template Kroscek berhasil (Saldo Awal: Rp ${saldoAwal.toLocaleString('id-ID')}, Saldo Akhir: Rp ${saldoAkhir.toLocaleString('id-ID')})`);
 
     return data;
   }
 
   async fetchLppBulanSebelumnya(opts = {}) {
     const p1 = opts.periode1 || '01/09/2026';
-    const menu = opts.menu || 'LPP01';
+    const reqMenu = opts.menu || 'ALL';
 
     // Parse DD/MM/YYYY
     const parts = p1.split('/');
@@ -1189,39 +1383,224 @@ class IasAutomationService {
     const prevP1 = `01/${String(prevMonth).padStart(2, '0')}/${prevYear}`;
     const prevP2 = `${String(lastDay).padStart(2, '0')}/${String(prevMonth).padStart(2, '0')}/${prevYear}`;
 
-    addLog('info', `[IAS] 📅 Mengambil LPP Bulan Sebelumnya (${menu}, Periode: ${prevP1} s/d ${prevP2})...`);
+    const menusToFetch = reqMenu === 'ALL' ? ['LPP01', 'LPP08', 'LPP10'] : [reqMenu];
+    const results = {};
 
-    // Fetch and parse using fetchAndParseRegisterLPP
-    const res = await this.fetchAndParseRegisterLPP({
-      menu,
-      export_type: 'pdf',
-      periode1: prevP1,
-      periode2: prevP2,
-      tipe: '3',
-      isPrevMonth: true
-    });
+    addLog('info', `[IAS] 📅 Mengambil data LPP Bulan Sebelumnya (${menusToFetch.join(', ')}, Periode: ${prevP1} s/d ${prevP2})...`);
 
-    const gt = res.grandTotal;
-    const saldoAkhirPrev = gt && gt.saldoAkhir?.rp ? parseInt(String(gt.saldoAkhir.rp).replace(/,/g, '').trim(), 10) : 0;
+    for (const m of menusToFetch) {
+      const res = await this.fetchAndParseRegisterLPP({
+        menu: m,
+        export_type: 'pdf',
+        periode1: prevP1,
+        periode2: prevP2,
+        tipe: '3',
+        isPrevMonth: true
+      });
 
-    // Update kroscek data
-    const kData = this.getKroscekData();
-    kData.lpp01.saldoAkhirSebelumME = saldoAkhirPrev;
-    kData.pembanding.saldoAkhirSebelumME = saldoAkhirPrev;
-    kData.pembanding.saldoAwalBulanME = saldoAkhirPrev; // Saldo Akhir bln lalu adalah pembanding Saldo Awal bln ini
-    kData.antarLpp.lpp01_prev = saldoAkhirPrev;
-    if (kData.lpp01.saldoAwalBulanME) {
-      kData.antarLpp.lpp01_me_awal = kData.lpp01.saldoAwalBulanME;
+      const gt = res.grandTotal;
+      const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+      const saldoAkhirPrev = parseNum(gt?.saldoAkhir?.rp || gt?.saldoAkhir);
+
+      const kData = this.getKroscekData();
+      if (m === 'LPP08') {
+        kData.antarLpp.lpp02_prev = saldoAkhirPrev;
+        results.lpp02 = saldoAkhirPrev;
+        addLog('success', `[IAS] ✅ Saldo Akhir LPP 02 (Retur) Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${saldoAkhirPrev.toLocaleString('id-ID')}`);
+      } else if (m === 'LPP10') {
+        kData.antarLpp.lpp03_prev = saldoAkhirPrev;
+        results.lpp03 = saldoAkhirPrev;
+        addLog('success', `[IAS] ✅ Saldo Akhir LPP 03 (Rusak) Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${saldoAkhirPrev.toLocaleString('id-ID')}`);
+      } else {
+        kData.lpp01.saldoAkhirSebelumME = saldoAkhirPrev;
+        kData.pembanding.saldoAkhirSebelumME = saldoAkhirPrev;
+        kData.pembanding.saldoAwalBulanME = saldoAkhirPrev; // Saldo Akhir bln lalu adalah pembanding Saldo Awal bln ini
+        kData.antarLpp.lpp01_prev = saldoAkhirPrev;
+        if (kData.lpp01.saldoAwalBulanME) {
+          kData.antarLpp.lpp01_me_awal = kData.lpp01.saldoAwalBulanME;
+        }
+        results.lpp01 = saldoAkhirPrev;
+        addLog('success', `[IAS] ✅ Saldo Akhir LPP 01 (Baik) Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${saldoAkhirPrev.toLocaleString('id-ID')}`);
+      }
+      this.saveKroscekData(kData);
     }
-    this.saveKroscekData(kData);
 
-    addLog('success', `[IAS] ✅ Saldo Akhir LPP Bulan Sebelumnya (${prevP2}) berhasil diperoleh: Rp ${gt?.saldoAkhir?.rp || 0}`);
+    const finalKData = this.getKroscekData();
 
     return {
       success: true,
       prevPeriode: `${prevP1} s/d ${prevP2}`,
-      saldoAkhirRp: gt?.saldoAkhir?.rp || '0',
-      saldoAkhirNum: saldoAkhirPrev,
+      results,
+      saldoAkhirRp: (results.lpp01 !== undefined ? results.lpp01 : 0).toLocaleString('id-ID'),
+      saldoAkhirNum: results.lpp01 || 0,
+      kroscekData: finalKData
+    };
+  }
+
+  /**
+   * Mengambil Saldo Awal LPP 01, LPP 02, dan LPP 03 Bulan Baru (Setelah ME)
+   * Misal bulan ME = September (09/2026), maka bulan baru = Oktober (01/10/2026)
+   */
+  async fetchLppBulanBerikutnya(opts = {}) {
+    const p1 = opts.periode1 || '01/09/2026';
+    const reqMenu = opts.menu || 'ALL';
+
+    // Parse DD/MM/YYYY
+    const parts = p1.split('/');
+    const day = parseInt(parts[0] || '1', 10);
+    const month = parseInt(parts[1] || '9', 10);
+    const year = parseInt(parts[2] || '2026', 10);
+
+    let nextMonth = month + 1;
+    let nextYear = year;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear = year + 1;
+    }
+
+    const nextP1 = `01/${String(nextMonth).padStart(2, '0')}/${nextYear}`;
+    const nextP2 = `01/${String(nextMonth).padStart(2, '0')}/${nextYear}`;
+
+    const menusToFetch = reqMenu === 'ALL' ? ['LPP01', 'LPP08', 'LPP10'] : [reqMenu];
+    const results = {};
+    let anyDataFound = false;
+
+    addLog('info', `[IAS] 📅 Mengambil Saldo Awal LPP Bulan Baru Setelah ME (${menusToFetch.join(', ')}, Periode: ${nextP1} s/d ${nextP2})...`);
+
+    for (const m of menusToFetch) {
+      const res = await this.fetchAndParseRegisterLPP({
+        menu: m,
+        export_type: 'pdf',
+        periode1: nextP1,
+        periode2: nextP2,
+        tipe: '3',
+        isNextMonth: true
+      });
+
+      const gt = res.grandTotal;
+      const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+      const saldoAwalNext = parseNum(gt?.saldoAwal?.rp || gt?.saldoAwal);
+
+      if (gt) anyDataFound = true;
+
+      const kData = this.getKroscekData();
+      if (m === 'LPP08') {
+        kData.antarLpp.lpp02_next_awal = saldoAwalNext;
+        results.lpp02 = saldoAwalNext;
+        addLog('success', `[IAS] ✅ Saldo Awal LPP 02 (Retur) Bulan Baru (${nextP1}): Rp ${saldoAwalNext.toLocaleString('id-ID')}`);
+      } else if (m === 'LPP10') {
+        kData.antarLpp.lpp03_next_awal = saldoAwalNext;
+        results.lpp03 = saldoAwalNext;
+        addLog('success', `[IAS] ✅ Saldo Awal LPP 03 (Rusak) Bulan Baru (${nextP1}): Rp ${saldoAwalNext.toLocaleString('id-ID')}`);
+      } else {
+        kData.antarLpp.lpp01_next_awal = saldoAwalNext;
+        results.lpp01 = saldoAwalNext;
+        addLog('success', `[IAS] ✅ Saldo Awal LPP 01 (Baik) Bulan Baru (${nextP1}): Rp ${saldoAwalNext.toLocaleString('id-ID')}`);
+      }
+      this.saveKroscekData(kData);
+    }
+
+    const finalKData = this.getKroscekData();
+
+    return {
+      success: true,
+      nextPeriode: `${nextP1} s/d ${nextP2}`,
+      anyDataFound,
+      results,
+      kroscekData: finalKData
+    };
+  }
+
+  /**
+   * Mengambil data LPP 02 (Barang Retur / menu=LPP08)
+   */
+  async fetchLpp02(opts = {}) {
+    const config = this.getConfig();
+    const p1 = opts.periode1 || config.periode1 || '01/09/2026';
+    const p2 = opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 📑 Mengambil data LPP 02 (Retur / LPP08, Periode: ${p1} s/d ${p2})...`);
+
+    const result = await this.fetchAndParseRegisterLPP({
+      ...opts,
+      menu: 'LPP08',
+      periode1: p1,
+      periode2: p2,
+      export_type: 'pdf',
+      tipe: opts.tipe || '3'
+    });
+
+    const gt = result.grandTotal;
+    const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+    const saldoAwalNum = parseNum(gt?.saldoAwal?.rp || gt?.saldoAwal);
+    const saldoAkhirNum = parseNum(gt?.saldoAkhir?.rp || gt?.saldoAkhir);
+    const pBaik02 = parseNum(gt?.penerimaanBaik);
+
+    const kData = this.getKroscekData();
+    kData.antarLpp.lpp02_me_awal = saldoAwalNum;
+    kData.antarLpp.lpp02_me_akhir = saldoAkhirNum;
+    kData.lpp02_penerimaanBaik = pBaik02;
+    const pBaik03 = parseNum(kData.lpp03_penerimaanBaik || 0);
+    kData.pembanding.pengeluaranLain = pBaik02 + pBaik03; // BA Retur IDM di-0-kan
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ Data LPP 02 (LPP08) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik02.toLocaleString('id-ID')}. Nilai LAIN2 (Pengeluaran) Pembanding otomatis diisi Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
+
+    return {
+      success: true,
+      lpp: 'LPP02',
+      menu: 'LPP08',
+      periode: `${p1} s/d ${p2}`,
+      saldoAwalNum,
+      saldoAkhirNum,
+      grandTotal: gt,
+      kroscekData: kData
+    };
+  }
+
+  /**
+   * Mengambil data LPP 03 (Barang Rusak / menu=LPP10)
+   */
+  async fetchLpp03(opts = {}) {
+    const config = this.getConfig();
+    const p1 = opts.periode1 || config.periode1 || '01/09/2026';
+    const p2 = opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 📑 Mengambil data LPP 03 (Rusak / LPP10, Periode: ${p1} s/d ${p2})...`);
+
+    const result = await this.fetchAndParseRegisterLPP({
+      ...opts,
+      menu: 'LPP10',
+      periode1: p1,
+      periode2: p2,
+      export_type: 'pdf',
+      tipe: opts.tipe || '3'
+    });
+
+    const gt = result.grandTotal;
+    const parseNum = (v) => parseInt(String(v || '0').replace(/,/g, '').trim(), 10) || 0;
+    const saldoAwalNum = parseNum(gt?.saldoAwal?.rp || gt?.saldoAwal);
+    const saldoAkhirNum = parseNum(gt?.saldoAkhir?.rp || gt?.saldoAkhir);
+    const pBaik03 = parseNum(gt?.penerimaanBaik);
+
+    const kData = this.getKroscekData();
+    kData.antarLpp.lpp03_me_awal = saldoAwalNum;
+    kData.antarLpp.lpp03_me_akhir = saldoAkhirNum;
+    kData.lpp03_penerimaanBaik = pBaik03;
+    const pBaik02 = parseNum(kData.lpp02_penerimaanBaik || 0);
+    kData.pembanding.pengeluaranLain = pBaik02 + pBaik03; // BA Retur IDM di-0-kan
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ Data LPP 03 (LPP10) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik03.toLocaleString('id-ID')}. Nilai LAIN2 (Pengeluaran) Pembanding otomatis diisi Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
+
+    return {
+      success: true,
+      lpp: 'LPP03',
+      menu: 'LPP10',
+      periode: `${p1} s/d ${p2}`,
+      saldoAwalNum,
+      saldoAkhirNum,
+      grandTotal: gt,
       kroscekData: kData
     };
   }
@@ -1233,10 +1612,11 @@ class IasAutomationService {
 
     addLog('info', `[IAS] 🛍️ Mengambil Laporan Daftar Pembelian (Periode: ${tgl1} s/d ${tgl2})...`);
 
-    const session = await this.createSession();
+    const session = await this.getOrCreateSession();
     const page = session.page;
 
-    const url = `http://172.31.146.190/bo/laporan/daftar-pembelian/cetak?tipe=1&tgl1=${tgl1}&tgl2=${tgl2}&div1=&div2=&dep1=&dep2=&kat1=&kat2=&sup1=&sup2=&mtr=&sort=1`;
+    const baseUrl = (config.baseUrl || process.env.IAS_BASE_URL || 'http://172.31.146.190').replace(/\/$/, '');
+    const url = `${baseUrl}/bo/laporan/daftar-pembelian/cetak?tipe=1&tgl1=${tgl1}&tgl2=${tgl2}&div1=&div2=&dep1=&dep2=&kat1=&kat2=&sup1=&sup2=&mtr=&sort=1`;
 
     try {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
@@ -1303,7 +1683,147 @@ class IasAutomationService {
         kroscekData: kData
       };
     } finally {
-      await session.browser.close().catch(() => {});
+      // Browser tetap aktif di persistentSession untuk aksi selanjutnya
+    }
+  }
+
+  /**
+   * Mengambil Laporan Penjualan (HPP Rata-rata) dari portal Web IAS / FO
+   * URL: /fo/laporan-kasir/penjualan/printdocumentmenu2?date1=...&date2=...&grosira=T&export=T&export_type=pdf&lst_print=INDOGROSIR%20ALL%20[IGR%20+%20(OMI/IDM)]
+   */
+  async fetchAndParseLaporanPenjualan(opts = {}) {
+    const config = this.getConfig();
+    const rawP1 = opts.date1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const rawP2 = opts.date2 || opts.periode2 || config.periode2 || '30/09/2026';
+    const date1 = rawP1.replace(/\//g, '-');
+    const date2 = rawP2.replace(/\//g, '-');
+
+    addLog('info', `[IAS] 📈 Mengambil Laporan Penjualan HPP Rata-rata (Periode: ${date1} s/d ${date2})...`);
+
+    const session = await this.getOrCreateSession();
+    const page = session.page;
+    const baseUrl = (config.baseUrl || 'http://172.31.146.190').replace(/\/$/, '');
+
+    const url = `${baseUrl}/fo/laporan-kasir/penjualan/printdocumentmenu2?date1=${date1}&date2=${date2}&grosira=T&export=T&export_type=pdf&lst_print=INDOGROSIR%20ALL%20[IGR%20+%20(OMI/IDM)]`;
+
+    let pdfBuffer = null;
+
+    try {
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 45000 }).catch(() => null),
+        page.goto(url, { timeout: 60000 }).catch(() => {})
+      ]);
+
+      if (download) {
+        const stream = await download.createReadStream();
+        const chunks = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+        }
+        pdfBuffer = Buffer.concat(chunks);
+      } else {
+        throw new Error('Gagal menerima file PDF Laporan Penjualan dari server.');
+      }
+
+      // Parse PDF Buffer
+      const str = pdfBuffer.toString('latin1');
+      const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+      let sm;
+      let textStream = '';
+
+      while ((sm = streamRegex.exec(str)) !== null) {
+        try {
+          const uncomp = zlib.inflateSync(Buffer.from(sm[1], 'latin1')).toString('latin1');
+          if (uncomp.includes('H.P.P RATA2') || uncomp.includes('GRAND TOTAL')) {
+            textStream = uncomp;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      if (!textStream) {
+        throw new Error('Tidak dapat menemukan data tabel dalam dokumen PDF Penjualan.');
+      }
+
+      // Parse text blocks with coordinates
+      const blocks = [];
+      const btRegex = /BT([\s\S]*?)ET/g;
+      let bm;
+      while ((bm = btRegex.exec(textStream)) !== null) {
+        const block = bm[1];
+        const tdMatch = block.match(/([\d.]+)\s+([\d.]+)\s+Td/);
+        const x = tdMatch ? parseFloat(tdMatch[1]) : 0;
+        const y = tdMatch ? parseFloat(tdMatch[2]) : 0;
+        
+        const tjMatch = block.match(/\[\s*([\s\S]*?)\s*\]\s*TJ/);
+        let text = '';
+        if (tjMatch) {
+          const parts = tjMatch[1].match(/\(([^)]*)\)/g) || [];
+          text = parts.map(p => p.slice(1, -1)).join('');
+        } else {
+          const singleMatch = block.match(/\(([^)]*)\)\s*Tj/);
+          if (singleMatch) text = singleMatch[1];
+        }
+        if (text) {
+          blocks.push({ x, y, text: text.trim() });
+        }
+      }
+
+      const rows = {};
+      blocks.forEach(b => {
+        const yKey = Math.round(b.y);
+        if (!rows[yKey]) rows[yKey] = [];
+        rows[yKey].push(b);
+      });
+
+      const sortedY = Object.keys(rows).map(Number).sort((a,b) => a - b);
+      let grandTotalRow = null;
+      for (const y of sortedY) {
+        const rowItems = rows[y].sort((a,b) => a.x - b.x);
+        const lineText = rowItems.map(i => i.text).join(' ');
+        if (lineText.includes('GRAND TOTAL')) {
+          grandTotalRow = rowItems;
+          break;
+        }
+      }
+
+      if (!grandTotalRow) {
+        throw new Error('Baris GRAND TOTAL tidak ditemukan dalam laporan penjualan.');
+      }
+
+      const parseNum = (s) => parseInt(String(s || '0').replace(/,/g, ''), 10) || 0;
+      const numItems = grandTotalRow.filter(i => /^[\d,]+(\.\d+)?$/.test(i.text.replace(/[()]/g, '')));
+
+      const penjualanKotor = parseNum(numItems[0]?.text);
+      const ppn = parseNum(numItems[1]?.text);
+      const bebasPpn = parseNum(numItems[2]?.text);
+      const ppnDtp = parseNum(numItems[3]?.text);
+      const penjualanBersih = parseNum(numItems[4]?.text);
+      const hppRata2 = parseNum(numItems[5]?.text);
+      const marginRp = parseNum(numItems[6]?.text);
+
+      // Update ke file kroscek data (Baris PENJUALAN)
+      const kData = this.getKroscekData();
+      kData.pembanding.penjualan = hppRata2;
+      this.saveKroscekData(kData);
+
+      addLog('success', `[IAS] ✅ [LAPORAN PENJUALAN] HPP Rata2: Rp ${hppRata2.toLocaleString('id-ID')} | Penjualan Bersih: Rp ${penjualanBersih.toLocaleString('id-ID')} (Periode: ${date1} s/d ${date2}) berhasil dimasukkan ke kolom Pembanding Penjualan!`);
+
+      return {
+        success: true,
+        periode: `${date1} s/d ${date2}`,
+        penjualanKotor,
+        ppn,
+        bebasPpn,
+        ppnDtp,
+        penjualanBersih,
+        hppRata2,
+        marginRp,
+        kroscekData: kData
+      };
+    } catch (err) {
+      addLog('error', `[IAS] ❌ [LAPORAN PENJUALAN] Gagal mengambil: ${err.message}`);
+      throw err;
     }
   }
 }

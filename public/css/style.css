@@ -1526,3 +1526,22 @@ input:checked + .slider:before {
   color: var(--text-main);
 }
 
+/* IAS Modules Locked State */
+.ias-modules-container {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.ias-modules-container.is-locked {
+  pointer-events: none !important;
+  opacity: 0.32 !important;
+  filter: grayscale(0.85) blur(0.4px);
+  user-select: none !important;
+  cursor: not-allowed !important;
+}
+
+.ias-modules-container.is-locked * {
+  cursor: not-allowed !important;
+}
+
+
