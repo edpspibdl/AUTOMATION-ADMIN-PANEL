@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { loadConfig, updateConfig } = require('../config/configManager');
-const { testDbConnection, fetchMarginMinusData } = require('../database/connection');
+const { testDbConnection, fetchMarginMinusData, fetchPluFromMd } = require('../database/connection');
 const { executeMarminGuard } = require('../schedulers/marminGuardJob');
 const { executeDailySchedule } = require('../schedulers/dailyScheduleJob');
 const { setupSchedulers, isAnyTaskRunning } = require('../schedulers/schedulerManager');
@@ -68,6 +68,26 @@ router.post('/db/preview', async (req, res) => {
   } else {
     addLog('error', `❌ Query PostgreSQL gagal: ${result.error}`);
     res.status(400).json({ success: false, error: result.error });
+  }
+});
+
+// 4b. Ambil PLU Master MD dari PostgreSQL (tbtr_update_plu_md hari ini)
+router.get('/db/fetch-plu-md', async (req, res) => {
+  const config = loadConfig();
+  addLog('info', `🐘 Mengambil daftar PLU Master MD (tbtr_update_plu_md Tag Z hari ini)...`);
+  const result = await fetchPluFromMd(config.dbConfig);
+
+  if (result.success) {
+    addLog('success', `📥 Ditemukan ${result.totalCount} PLU Master MD hari ini.`);
+    res.json({
+      success: true,
+      totalCount: result.totalCount,
+      plus: result.plus,
+      items: result.items
+    });
+  } else {
+    addLog('error', `❌ Query PLU Master MD gagal: ${result.error}`);
+    res.status(400).json({ success: false, error: result.error, plus: [], items: [] });
   }
 });
 

@@ -2,30 +2,50 @@ const { searchStockApi, toggleStockApi } = require('../services/stockService');
 const { loadConfig, updateConfig } = require('../config/configManager');
 const { addLog } = require('../utils/logger');
 const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
+const { fetchPluFromMd } = require('../database/connection');
 
 let isDailyRunning = false;
 
 /**
- * Eksekusi Jadwal Harian PLU Manual:
- * Memproses seluruh nomor PLU yang ada di input manual sesuai jadwal jam harian.
+ * Eksekusi Jadwal Harian PLU:
+ * Memproses PLU dari Master DB (tbtr_update_plu_md) dan PLU manual sesuai jadwal harian.
  */
 async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual') {
   if (isDailyRunning) {
-    addLog('warning', `⚠️ [JADWAL MANUAL] Tugas sebelumnya masih berlangsung. (${triggerSource}) diabaikan.`);
+    addLog('warning', `⚠️ [JADWAL PLU] Tugas sebelumnya masih berlangsung. (${triggerSource}) diabaikan.`);
     return { success: false, message: 'Tugas masih berjalan.' };
   }
 
   isDailyRunning = true;
   const config = loadConfig();
   const action = config.dailyAction || 'nonaktif';
-  const targetPlus = normalizeAndDeduplicatePlus(config.plus || []);
 
-  addLog('info', `▶️ [JADWAL MANUAL] Mulai eksekusi [${triggerSource}]. Target: ${targetPlus.length} PLU Manual, Aksi: [${action.toUpperCase()}]`);
+  // 1. Ambil data master PLU dari tbtr_update_plu_md (Tag Z hari ini)
+  let dbPlus = [];
+  try {
+    const dbRes = await fetchPluFromMd(config.dbConfig);
+    if (dbRes.success && dbRes.plus && dbRes.plus.length > 0) {
+      dbPlus = dbRes.plus;
+      addLog('info', `📥 [MASTER MD] Ditemukan ${dbPlus.length} PLU dari tbtr_update_plu_md hari ini: ${dbPlus.join(', ')}`);
+    } else if (dbRes.success) {
+      addLog('info', `📥 [MASTER MD] Tidak ada update PLU Tag Z hari ini di tbtr_update_plu_md.`);
+    } else {
+      addLog('warning', `⚠️ [MASTER MD] Gagal query tbtr_update_plu_md: ${dbRes.error}`);
+    }
+  } catch (err) {
+    addLog('warning', `⚠️ [MASTER MD] Gagal koneksi database master: ${err.message}`);
+  }
+
+  // 2. Gabungkan dengan PLU manual dari config (deduplikasi)
+  const combined = [...dbPlus, ...(config.plus || [])];
+  const targetPlus = normalizeAndDeduplicatePlus(combined);
+
+  addLog('info', `▶️ [JADWAL PLU] Mulai eksekusi [${triggerSource}]. Target Total: ${targetPlus.length} PLU (${dbPlus.length} Master DB, ${(config.plus || []).length} Manual), Aksi: [${action.toUpperCase()}]`);
 
   if (targetPlus.length === 0) {
-    addLog('warning', '⚠️ [JADWAL MANUAL] Daftar PLU manual kosong.');
+    addLog('warning', '⚠️ [JADWAL PLU] Daftar PLU target kosong (tidak ada PLU dari DB maupun manual).');
     isDailyRunning = false;
-    return { success: true, message: 'Daftar PLU manual kosong.' };
+    return { success: true, message: 'Daftar PLU target kosong.' };
   }
 
   const results = [];
@@ -69,14 +89,16 @@ async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual') {
         triggerSource,
         action,
         totalPlus: targetPlus.length,
+        fromDbCount: dbPlus.length,
+        fromManualCount: (config.plus || []).length,
         successCount: results.filter(r => r.status === 'success').length
       }
     });
 
-    addLog('success', `🎉 [JADWAL MANUAL] Selesai! Berhasil memproses ${targetPlus.length} PLU manual.`);
+    addLog('success', `🎉 [JADWAL PLU] Selesai! Berhasil memproses ${targetPlus.length} PLU (${dbPlus.length} Master DB, ${(config.plus || []).length} Manual).`);
     return { success: true, results };
   } catch (err) {
-    addLog('error', `❌ [JADWAL MANUAL] Terjadi kesalahan: ${err.message}`);
+    addLog('error', `❌ [JADWAL PLU] Terjadi kesalahan: ${err.message}`);
     return { success: false, error: err.message };
   } finally {
     isDailyRunning = false;

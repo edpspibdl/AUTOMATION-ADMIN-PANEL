@@ -85,6 +85,8 @@ const modalTextareaPlu = document.getElementById('modalTextareaPlu');
 const modalPluCounter = document.getElementById('modalPluCounter');
 const btnModalClear = document.getElementById('btnModalClear');
 const modalFileInput = document.getElementById('modalFileInput');
+const btnFetchPluFromDb = document.getElementById('btnFetchPluFromDb');
+const btnModalFetchDbPlu = document.getElementById('btnModalFetchDbPlu');
 
 // Database Modal Elements
 const dbModalOverlay = document.getElementById('dbModalOverlay');
@@ -672,6 +674,57 @@ btnModalClear.addEventListener('click', () => {
   modalTextareaPlu.value = '';
   updateModalCounter();
 });
+
+// Fetch PLU Master MD from tbtr_update_plu_md (Tag Z hari ini)
+async function fetchPluFromMasterDb(target = 'chips') {
+  const btn = (target === 'modal') ? btnModalFetchDbPlu : btnFetchPluFromDb;
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> Menarik...';
+  }
+
+  try {
+    const res = await fetch('/api/db/fetch-plu-md');
+    const json = await res.json();
+    if (json.success && json.plus) {
+      if (json.plus.length === 0) {
+        showAlert('info', 'Master MD Kosong', 'Tidak ada update PLU Tag Z hari ini di tabel tbtr_update_plu_md.');
+        return;
+      }
+      if (target === 'modal') {
+        const existing = modalTextareaPlu.value.trim();
+        const newLines = json.plus.join('\n');
+        modalTextareaPlu.value = existing ? `${existing}\n${newLines}` : newLines;
+        updateModalCounter();
+        showAlert('success', 'Master MD Ditarik', `Berhasil mengambil ${json.totalCount} PLU Tag Z hari ini ke dalam editor.`);
+      } else {
+        const existingPlus = currentConfig.plus || [];
+        const merged = Array.from(new Set([...existingPlus, ...json.plus]));
+        currentConfig.plus = merged;
+        renderPluChips(merged);
+        await saveAllConfig();
+        showAlert('success', 'Master MD Ditarik', `Ditemukan ${json.totalCount} PLU Tag Z hari ini dari tbtr_update_plu_md. Daftar target PLU kini: ${merged.length}.`);
+      }
+    } else {
+      showAlert('error', 'Gagal Menarik Master DB', json.error || 'Terjadi kesalahan');
+    }
+  } catch (err) {
+    showAlert('error', 'Error Jaringan', err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+if (btnFetchPluFromDb) {
+  btnFetchPluFromDb.addEventListener('click', () => fetchPluFromMasterDb('chips'));
+}
+if (btnModalFetchDbPlu) {
+  btnModalFetchDbPlu.addEventListener('click', () => fetchPluFromMasterDb('modal'));
+}
 
 // DB Modal Events
 btnOpenDbModal.addEventListener('click', openDbModal);

@@ -120,6 +120,21 @@ WHERE CURRENT_DATE BETWEEN DATE(PRMD_TGLAWAL) AND DATE(PRMD_TGLAKHIR)
 )PRMD ON HRG_N.PRD_PRDCD=PRMD.PLUMD)MARGINM WHERE (MARGIN_A<0 OR MARGIN_A_MD<0) AND PRD_PRDCD LIKE '%0'
 `;
 
+/**
+ * SQL Query untuk Mengambil PLU yang Dimatikan oleh Master MD (Tag Z Hari Ini)
+ */
+const DEFAULT_PLU_MD_QUERY = `
+SELECT * FROM tbtr_update_plu_md
+WHERE upd_prdcd LIKE '%0'
+  AND upd_atribute1 IS NULL
+  AND upd_atribute2 = 'Z'
+  AND CAST(upd_create_dt AS DATE) = CURRENT_DATE
+ORDER BY upd_create_dt DESC
+LIMIT 100;
+`;
+
 module.exports = {
-  DEFAULT_MARGIN_QUERY
+  DEFAULT_MARGIN_QUERY,
+  DEFAULT_PLU_MD_QUERY
 };
+

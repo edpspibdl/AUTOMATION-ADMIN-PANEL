@@ -237,13 +237,22 @@
                   </div>
                 </div>
 
-                <!-- PLU Chips Preview -->
+                <!-- Master MD Info & PLU Chips Preview -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; font-size: 11.5px;">
+                  <span style="color: #60a5fa; display: flex; align-items: center; gap: 5px;">
+                    <span>🏢</span> <strong>Master MD (tbtr_update_plu_md):</strong> Tag Z Hari Ini
+                  </span>
+                  <button type="button" class="btn btn-xs btn-outline" id="btnFetchPluFromDb" style="padding: 2px 8px; font-size: 11px;">
+                    <span>📥</span> Tarik Master DB
+                  </button>
+                </div>
+
                 <div class="plu-chips-header mt-2">
-                  <span class="chips-title">Daftar PLU Manual:</span>
+                  <span class="chips-title">Daftar PLU Target (Master + Manual):</span>
                   <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
                 </div>
                 <div class="plu-chips-container" id="pluChipsContainer">
-                  <span class="chip-empty">Belum ada PLU manual. Klik <strong>"Input / Edit PLU"</strong>.</span>
+                  <span class="chip-empty">Belum ada PLU manual. Klik <strong>"Input / Edit PLU"</strong> atau <strong>"Tarik Master DB"</strong>.</span>
                 </div>
 
                 <div class="action-buttons-row mt-2">
@@ -254,7 +263,7 @@
                     <span>💾</span> Simpan Pengaturan
                   </button>
                   <button class="btn btn-success btn-sm" id="btnRunManualDirect">
-                    <span>📋</span> Jalankan PLU Manual Sekarang
+                    <span>📋</span> Jalankan Nonaktifkan PLU Sekarang
                   </button>
                 </div>
               </div>
@@ -749,6 +758,9 @@
         <div class="modal-toolbar">
           <span class="badge badge-info" id="modalPluCounter">0 PLU Terdeteksi</span>
           <div class="toolbar-btns">
+            <button type="button" class="btn btn-xs btn-outline" id="btnModalFetchDbPlu">
+              <span>📥</span> Ambil Master DB
+            </button>
             <label class="btn btn-xs btn-outline file-input-label">
               <span>📁</span> Import .txt
               <input type="file" id="modalFileInput" accept=".txt,.csv" style="display:none;">

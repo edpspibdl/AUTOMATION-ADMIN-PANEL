@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const { DEFAULT_MARGIN_QUERY } = require('./queries');
+const { DEFAULT_MARGIN_QUERY, DEFAULT_PLU_MD_QUERY } = require('./queries');
 const { normalizePlu } = require('../utils/pluHelper');
 
 function createPool(dbConfig = {}) {
@@ -101,8 +101,60 @@ async function fetchMarginMinusData(dbConfig, customQuery = null) {
   }
 }
 
+/**
+ * Mengambil daftar PLU yang dimatikan oleh MD (Tag Z hari ini) dari tabel tbtr_update_plu_md
+ */
+async function fetchPluFromMd(dbConfig, customQuery = null) {
+  const pool = createPool(dbConfig);
+  const queryText = (customQuery && customQuery.trim()) ? customQuery : DEFAULT_PLU_MD_QUERY;
+
+  try {
+    const client = await pool.connect();
+    const res = await client.query(queryText);
+    client.release();
+    await pool.end();
+
+    const seen = new Set();
+    const plus = [];
+    const items = [];
+
+    for (const r of res.rows) {
+      const rawPlu = r.upd_prdcd || r.prdcd || r.plu;
+      const clean = normalizePlu(rawPlu);
+      if (!clean || clean.length !== 7 || seen.has(clean)) continue;
+      seen.add(clean);
+      plus.push(clean);
+      items.push({
+        plu: clean,
+        harga: r.upd_harga || 0,
+        atribute1: r.upd_atribute1,
+        atribute2: r.upd_atribute2,
+        createBy: r.upd_create_by || '-',
+        createDt: r.upd_create_dt
+      });
+    }
+
+    return {
+      success: true,
+      totalCount: plus.length,
+      plus,
+      items
+    };
+  } catch (err) {
+    try { await pool.end(); } catch (_) {}
+    return {
+      success: false,
+      error: err.message,
+      plus: [],
+      items: []
+    };
+  }
+}
+
 module.exports = {
   createPool,
   testDbConnection,
-  fetchMarginMinusData
+  fetchMarginMinusData,
+  fetchPluFromMd
 };
+
