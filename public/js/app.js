@@ -4,6 +4,8 @@ let currentConfig = {
   marminIntervalMinutes: 5,
   dailyScheduleEnabled: true,
   dailyScheduleTime: '22:00',
+  dailyEnableTime: '08:00',
+  dailyEnableAction: 'aktif',
   dailyAction: 'nonaktif',
   plus: [],
   customQuery: '',
@@ -62,6 +64,8 @@ const btnRunMarminGuardNow = document.getElementById('btnRunMarminGuardNow');
 const toggleDailySchedule = document.getElementById('toggleDailySchedule');
 const inputDailyTime = document.getElementById('inputDailyTime');
 const selectDailyAction = document.getElementById('selectDailyAction');
+const inputDailyEnableTime = document.getElementById('inputDailyEnableTime');
+const selectDailyEnableAction = document.getElementById('selectDailyEnableAction');
 const btnSaveConfig = document.getElementById('btnSaveConfig');
 const btnRunManualDirect = document.getElementById('btnRunManualDirect');
 
@@ -253,6 +257,8 @@ async function loadConfig() {
     toggleDailySchedule.checked = !!data.dailyScheduleEnabled;
     inputDailyTime.value = data.dailyScheduleTime || '22:00';
     selectDailyAction.value = data.dailyAction || 'nonaktif';
+    inputDailyEnableTime.value = data.dailyEnableTime || '08:00';
+    selectDailyEnableAction.value = data.dailyEnableAction || 'aktif';
     
     // DB Form Controls
     const db = data.dbConfig || {};
@@ -314,6 +320,8 @@ async function saveAllConfig() {
     dailyScheduleEnabled: toggleDailySchedule.checked,
     dailyScheduleTime: inputDailyTime.value,
     dailyAction: selectDailyAction.value,
+    dailyEnableTime: inputDailyEnableTime.value,
+    dailyEnableAction: selectDailyEnableAction.value,
     plus: currentConfig.plus || []
   };
 
