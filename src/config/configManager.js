@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
   dailyEnableTime: '08:00',
   dailyEnableAction: 'aktif',
   plus: ['0013500'],
+  deactivatedPlus: [],
   customQuery: '',
   dbConfig: {
     host: process.env.PG_HOST || 'localhost',
@@ -50,6 +51,7 @@ function loadConfig() {
         dailyEnableTime: cfg.dailyEnableTime || DEFAULT_CONFIG.dailyEnableTime,
         dailyEnableAction: cfg.dailyEnableAction || DEFAULT_CONFIG.dailyEnableAction,
         plus: Array.isArray(cfg.plus) ? cfg.plus : DEFAULT_CONFIG.plus,
+        deactivatedPlus: Array.isArray(cfg.deactivatedPlus) ? cfg.deactivatedPlus : [],
         customQuery: cfg.customQuery || '',
         dbConfig: cfg.dbConfig || DEFAULT_CONFIG.dbConfig,
         lastRun: cfg.lastRun || null,
@@ -89,6 +91,9 @@ function updateConfig(partialConfig) {
   }
   if (Array.isArray(partialConfig.plus)) {
     updated.plus = partialConfig.plus.map(p => p.toString().trim()).filter(Boolean);
+  }
+  if (Array.isArray(partialConfig.deactivatedPlus)) {
+    updated.deactivatedPlus = partialConfig.deactivatedPlus.map(p => p.toString().trim()).filter(Boolean);
   }
   saveConfig(updated);
   return updated;
