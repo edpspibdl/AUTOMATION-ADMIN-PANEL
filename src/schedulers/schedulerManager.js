@@ -6,6 +6,7 @@ const { addLog } = require('../utils/logger');
 
 let marminCronTask = null;
 let dailyCronTask = null;
+let dailyEnableCronTask = null;
 
 function setupSchedulers() {
   // Hentikan jadwal aktif sebelumnya jika ada
@@ -16,6 +17,10 @@ function setupSchedulers() {
   if (dailyCronTask) {
     dailyCronTask.stop();
     dailyCronTask = null;
+  }
+  if (dailyEnableCronTask) {
+    dailyEnableCronTask.stop();
+    dailyEnableCronTask = null;
   }
 
   const config = loadConfig();
@@ -37,11 +42,26 @@ function setupSchedulers() {
   if (config.dailyScheduleEnabled && config.dailyScheduleTime) {
     const [hour, minute] = config.dailyScheduleTime.split(':');
     const cronExpr = `${parseInt(minute, 10)} ${parseInt(hour, 10)} * * *`;
-    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! Memproses PLU manual setiap hari pukul ${config.dailyScheduleTime} WIB (Cron: ${cronExpr})`);
+    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! Menonaktifkan PLU manual setiap hari pukul ${config.dailyScheduleTime} WIB (Cron: ${cronExpr})`);
 
     dailyCronTask = cron.schedule(cronExpr, async () => {
       addLog('info', `🚀 [CRON TRIGGER] Memulai eksekusi jadwal harian PLU manual pada pukul ${config.dailyScheduleTime}...`);
       await executeDailySchedule(`Jadwal Harian (${config.dailyScheduleTime} WIB)`);
+    });
+  } else {
+    addLog('info', '⏸️ [JADWAL HARIAN MANUAL] Status: NONAKTIF.');
+  }
+
+  // 3. Setup Jadwal Harian Aktif Kembali (misal Jam 08:00 WIB)
+  if (config.dailyScheduleEnabled && config.dailyEnableTime) {
+    const [hour, minute] = config.dailyEnableTime.split(':');
+    const cronExpr = `${parseInt(minute, 10)} ${parseInt(hour, 10)} * * *`;
+    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! Mengaktifkan PLU manual setiap hari pukul ${config.dailyEnableTime} WIB (Cron: ${cronExpr})`);
+
+    dailyEnableCronTask = cron.schedule(cronExpr, async () => {
+      addLog('info', `🚀 [CRON TRIGGER] Memulai eksekusi jadwal harian PLU manual pada pukul ${config.dailyEnableTime}...`);
+      // Kirim overrideAction 'aktif'
+      await executeDailySchedule(`Jadwal Aktif (${config.dailyEnableTime} WIB)`, 'aktif');
     });
   } else {
     addLog('info', '⏸️ [JADWAL HARIAN MANUAL] Status: NONAKTIF.');
