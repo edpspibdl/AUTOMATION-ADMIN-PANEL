@@ -10,7 +10,7 @@ let isDailyRunning = false;
  * Eksekusi Jadwal Harian PLU:
  * Memproses PLU dari Master DB (tbtr_update_plu_md) dan PLU manual sesuai jadwal harian.
  */
-async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual') {
+async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual', overrideAction = null) {
   if (isDailyRunning) {
     addLog('warning', `⚠️ [JADWAL PLU] Tugas sebelumnya masih berlangsung. (${triggerSource}) diabaikan.`);
     return { success: false, message: 'Tugas masih berjalan.' };
@@ -18,7 +18,7 @@ async function executeDailySchedule(triggerSource = 'Jadwal Harian Manual') {
 
   isDailyRunning = true;
   const config = loadConfig();
-  const action = config.dailyAction || 'nonaktif';
+  const action = overrideAction || config.dailyAction || 'nonaktif';
 
   // 1. Ambil data master PLU dari tbtr_update_plu_md (Tag Z hari ini)
   let dbPlus = [];
