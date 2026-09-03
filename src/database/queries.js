@@ -17,7 +17,9 @@ SELECT PRD_KODEDIVISI DIV,
   MARGIN_A MARGIN,
   MARGIN_L MARGIN_LCOST,
   MARGIN_A_MD,
-  MARGIN_L_MD
+  MARGIN_L_MD,
+  MARGIN_A_MDS,
+  MARGIN_L_MDS
 FROM
   (SELECT PRD_KODEDIVISI,
     PRD_PRDCD,
@@ -48,7 +50,43 @@ FROM
           WHEN COALESCE(prd_flagbkp1,'T') ='Y' and COALESCE(prd_flagbkp2,'T') ='Y'
           THEN (((PRMD_HRGJUAL/1.11)-(ST_LASTCOST*PRD_FRAC))/(PRMD_HRGJUAL/1.11)*100)
           ELSE (((PRMD_HRGJUAL-(ST_LASTCOST*PRD_FRAC))/PRMD_HRGJUAL)*100)
-        END AS MARGIN_L_MD FROM(SELECT PRD_KODEDIVISI,
+        END AS MARGIN_L_MD,
+
+        -- Kolom 1: MARGIN_A_MD (menggunakan ST_AVGCOST)
+        CASE
+            WHEN PRD_UNIT = 'KG'
+                  THEN (((PRMD_HRGJUAL - (ST_AVGCOST * PRD_FRAC / 1000)) / PRMD_HRGJUAL) * 100)
+            WHEN COALESCE(prd_flagbkp1, 'T') = 'Y' AND COALESCE(prd_flagbkp2, 'T') = 'Y'
+                  THEN CASE 
+                      WHEN SETT_PROMOMD IS NULL 
+                            THEN (((PRD_HRGJUAL / 1.11) - (ST_AVGCOST * PRD_FRAC)) / (PRD_HRGJUAL / 1.11) * 100)
+                      ELSE (((PRMD_HRGJUAL / 1.11) - (ST_AVGCOST * PRD_FRAC)) / (PRMD_HRGJUAL / 1.11) * 100)
+                  END
+            ELSE CASE 
+                      WHEN SETT_PROMOMD IS NULL 
+                            THEN (((PRD_HRGJUAL - (ST_AVGCOST * PRD_FRAC)) / PRD_HRGJUAL) * 100)
+                      ELSE (((PRMD_HRGJUAL - (ST_AVGCOST * PRD_FRAC)) / PRMD_HRGJUAL) * 100)
+                  END
+        END AS MARGIN_A_MDS,
+    
+        -- Kolom 2: MARGIN_L_MD (menggunakan ST_LASTCOST)
+        CASE
+            WHEN PRD_UNIT = 'KG'
+                  THEN (((PRMD_HRGJUAL - (ST_LASTCOST * PRD_FRAC / 1000)) / PRMD_HRGJUAL) * 100)
+            WHEN COALESCE(prd_flagbkp1, 'T') = 'Y' AND COALESCE(prd_flagbkp2, 'T') = 'Y'
+                  THEN CASE 
+                      WHEN SETT_PROMOMD IS NULL 
+                            THEN (((PRD_HRGJUAL / 1.11) - (ST_LASTCOST * PRD_FRAC)) / (PRD_HRGJUAL / 1.11) * 100)
+                      ELSE (((PRMD_HRGJUAL / 1.11) - (ST_LASTCOST * PRD_FRAC)) / (PRMD_HRGJUAL / 1.11) * 100)
+                  END
+            ELSE CASE 
+                      WHEN SETT_PROMOMD IS NULL 
+                            THEN (((PRD_HRGJUAL - (ST_LASTCOST * PRD_FRAC)) / PRD_HRGJUAL) * 100)
+                      ELSE (((PRMD_HRGJUAL - (ST_LASTCOST * PRD_FRAC)) / PRMD_HRGJUAL) * 100)
+                  END
+        END AS MARGIN_L_MDS
+        
+  FROM(SELECT PRD_KODEDIVISI,
   PRD_PRDCD,
   PRD_DESKRIPSIPANJANG,
   PRD_FRAC,
@@ -112,12 +150,13 @@ FROM tbmaster_prodmast
 FROM tbmaster_Stock
 WHERE st_lokasi='01'
 )stk ON prd.PLU=stk.st_prdcd 
-  WHERE COALESCE (PRD_KODETAG,'0') NOT IN ('N','X','Z') AND ST_SALDOAKHIR <>0 ORDER BY PRD_PRDCD ASC)HRG_N LEFT JOIN 
+  WHERE COALESCE (PRD_KODETAG,'0') NOT IN ('N','X','Z') ORDER BY PRD_PRDCD ASC)HRG_N LEFT JOIN 
  (SELECT PRMD_PRDCD AS PLUMD,
-  PRMD_HRGJUAL
+  PRMD_HRGJUAL, SETT_PROMOMD
 FROM TBTR_PROMOMD
+LEFT JOIN (SELECT ALK_PRDCD, COUNT(ALK_MEMBER) SETT_PROMOMD FROM TBTR_PROMOMD_ALOKASI GROUP BY ALK_PRDCD) ALK ON ALK_PRDCD = PRMD_PRDCD
 WHERE CURRENT_DATE BETWEEN DATE(PRMD_TGLAWAL) AND DATE(PRMD_TGLAKHIR)
-)PRMD ON HRG_N.PRD_PRDCD=PRMD.PLUMD)MARGINM WHERE (MARGIN_A<0 OR MARGIN_A_MD<0) AND PRD_PRDCD LIKE '%0'
+)PRMD ON HRG_N.PRD_PRDCD=PRMD.PLUMD)MARGINM WHERE (MARGIN_A<=0 OR MARGIN_A_MDS<=0) AND PRD_PRDCD LIKE '%0'
 `;
 
 /**
