@@ -219,12 +219,13 @@
               </div>
               <div class="card-body">
                 <p class="section-desc">
-                  Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional
-                  tutup toko).
+                  Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional tutup/buka toko).
                 </p>
+                
+                <!-- Baris 1: Pengaturan Jadwal Nonaktif -->
                 <div class="form-row mt-2">
                   <div class="form-group flex-1">
-                    <label for="inputDailyTime">Jam Eksekusi Harian (WIB)</label>
+                    <label for="inputDailyTime">Jam Nonaktifkan (WIB)</label>
                     <div class="input-with-icon">
                       <span class="field-icon">🕒</span>
                       <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
@@ -232,13 +233,32 @@
                   </div>
 
                   <div class="form-group flex-1">
-                    <label for="selectDailyAction">Aksi Yang Dilakukan</label>
+                    <label for="selectDailyAction">Aksi Jam Nonaktif</label>
                     <div class="input-with-icon">
                       <span class="field-icon">⚡</span>
-                      <select id="selectDailyAction" class="custom-input">
+                      <select id="selectDailyAction" class="custom-input" disabled>
                         <option value="nonaktif">Nonaktifkan Stok</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Baris 2: Pengaturan Jadwal Aktif Kembali (Baru) -->
+                <div class="form-row mt-2">
+                  <div class="form-group flex-1">
+                    <label for="inputDailyEnableTime">Jam Aktifkan Kembali (WIB)</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">🕒</span>
+                      <input type="time" id="inputDailyEnableTime" value="08:00" class="custom-input">
+                    </div>
+                  </div>
+
+                  <div class="form-group flex-1">
+                    <label for="selectDailyEnableAction">Aksi Jam Aktif</label>
+                    <div class="input-with-icon">
+                      <span class="field-icon">⚡</span>
+                      <select id="selectDailyEnableAction" class="custom-input" disabled>
                         <option value="aktif">Aktifkan Kembali</option>
-                        <option value="toggle">Toggle Status</option>
                       </select>
                     </div>
                   </div>
@@ -256,7 +276,7 @@
                   </button>
                 </div>
 
-                <div class="plu-chips-header mt-2">
+                <div class="plu-chips-header mt-3">
                   <span class="chips-title">Daftar PLU Target (Master + Manual):</span>
                   <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
                 </div>
