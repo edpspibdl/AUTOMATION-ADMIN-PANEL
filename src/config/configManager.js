@@ -10,6 +10,8 @@ const DEFAULT_CONFIG = {
   dailyScheduleEnabled: true,
   dailyScheduleTime: '22:00',
   dailyAction: 'nonaktif',
+  dailyEnableTime: '08:00',
+  dailyEnableAction: 'aktif',
   plus: ['0013500'],
   customQuery: '',
   dbConfig: {
@@ -45,6 +47,8 @@ function loadConfig() {
         dailyScheduleEnabled: cfg.dailyScheduleEnabled ?? DEFAULT_CONFIG.dailyScheduleEnabled,
         dailyScheduleTime: cfg.dailyScheduleTime || DEFAULT_CONFIG.dailyScheduleTime,
         dailyAction: cfg.dailyAction || DEFAULT_CONFIG.dailyAction,
+        dailyEnableTime: cfg.dailyEnableTime || DEFAULT_CONFIG.dailyEnableTime,
+        dailyEnableAction: cfg.dailyEnableAction || DEFAULT_CONFIG.dailyEnableAction,
         plus: Array.isArray(cfg.plus) ? cfg.plus : DEFAULT_CONFIG.plus,
         customQuery: cfg.customQuery || '',
         dbConfig: cfg.dbConfig || DEFAULT_CONFIG.dbConfig,
