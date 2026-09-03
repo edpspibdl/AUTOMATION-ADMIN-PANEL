@@ -4,8 +4,15 @@
   "dailyScheduleEnabled": true,
   "dailyScheduleTime": "22:00",
   "dailyAction": "nonaktif",
+  "dailyEnableTime": "08:00",
+  "dailyEnableAction": "aktif",
   "plus": [
     "0013500"
+  ],
+  "deactivatedPlus": [
+    "1557360",
+    "1416970",
+    "1662640"
   ],
   "customQuery": "",
   "dbConfig": {
