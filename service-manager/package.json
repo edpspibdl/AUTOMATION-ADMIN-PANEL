@@ -1,0 +1,20 @@
+{
+  "name": "service-manager",
+  "version": "1.0.0",
+  "description": "Standalone Process & Service Manager Web Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "process-manager",
+    "service-manager",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1"
+  }
+}

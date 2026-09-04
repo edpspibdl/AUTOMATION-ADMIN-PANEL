@@ -1,15 +1,13 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const path = require('path');
-const apiRoutes = require('./src/routes/apiRoutes');
-const { setupSchedulers } = require('./src/schedulers/schedulerManager');
-const { addLog } = require('./src/utils/logger');
+const routes = require('./src/routes');
+const { initAutoStartServices } = require('./src/processManager');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
-// Middleware CORS & JSON Parser
+// Middleware CORS & JSON
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -18,19 +16,30 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Mount API Routes
-app.use('/api', apiRoutes);
+// Mount API
+app.use('/api', routes);
 
-// Jalankan Server & Penjadwal
+// Explicit root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Fallback for SPA
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Endpoint tidak ditemukan.' });
+  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 StokPoin Automation Dashboard siap dijalankan!`);
+  console.log(`🚀 Service Manager Dashboard siap dijalankan!`);
   console.log(`🌐 Buka di browser: http://localhost:${PORT}`);
   console.log(`======================================================\n`);
 
-  addLog('info', `Server Web UI berjalan di http://localhost:${PORT}`);
-  setupSchedulers();
+  initAutoStartServices();
 });

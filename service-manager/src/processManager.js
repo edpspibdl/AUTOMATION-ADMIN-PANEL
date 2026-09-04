@@ -2,17 +2,17 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { logEmitter } = require('../utils/logger');
+const EventEmitter = require('events');
 
-const SERVICES_FILE = path.join(__dirname, '../../services.json');
-const SERVICES_EXAMPLE_FILE = path.join(__dirname, '../../services.example.json');
+const logEmitter = new EventEmitter();
+logEmitter.setMaxListeners(100);
 
-// In-memory runtime state for services
-// Map<serviceId, { child, pid, startTime, status: 'RUNNING'|'STOPPED'|'CRASHED', logs: [], manualStop: boolean, restartCount: number }>
+const SERVICES_FILE = path.join(__dirname, '../services.json');
+const SERVICES_EXAMPLE_FILE = path.join(__dirname, '../services.example.json');
+
 const activeProcesses = new Map();
 const MAX_SERVICE_LOGS = 300;
 
-// Format duration helper (e.g. "2j 15m 30d")
 function formatUptime(ms) {
   if (!ms || ms < 0) return '0d';
   const totalSecs = Math.floor(ms / 1000);
@@ -29,7 +29,6 @@ function formatUptime(ms) {
   return parts.join(' ');
 }
 
-// 1. Data Persistence
 function loadServices() {
   try {
     if (fs.existsSync(SERVICES_FILE)) {
@@ -56,7 +55,6 @@ function saveServices(services) {
   }
 }
 
-// 2. Service CRUD
 function getServices() {
   const list = loadServices();
   return list.map(srv => {
@@ -142,7 +140,6 @@ function deleteService(id) {
   return true;
 }
 
-// 3. Process Execution & Management
 function appendLog(serviceId, text, type = 'info') {
   let runtime = activeProcesses.get(serviceId);
   if (!runtime) {
@@ -153,7 +150,7 @@ function appendLog(serviceId, text, type = 'info') {
   const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
   const entry = {
     time,
-    type, // 'info', 'stdout', 'stderr', 'system', 'error'
+    type,
     text: text.toString().replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   };
 
@@ -162,7 +159,6 @@ function appendLog(serviceId, text, type = 'info') {
     runtime.logs.shift();
   }
 
-  // Emit realtime event
   logEmitter.emit('service-log', {
     serviceId,
     log: entry
@@ -183,7 +179,7 @@ function startService(id) {
 
   const workingDir = srv.cwd && srv.cwd.trim() !== ''
     ? path.resolve(srv.cwd)
-    : path.resolve(__dirname, '../../');
+    : path.resolve(__dirname, '../');
 
   appendLog(id, `🚀 Memulai service: "${srv.name}" (Perintah: ${srv.command})...`, 'system');
 
@@ -241,7 +237,6 @@ function startService(id) {
 
       logEmitter.emit('service-status', { serviceId: id, status: runtime.status });
 
-      // Auto-restart handling if enabled and not stopped manually
       if (!isManual && srv.autoRestart && code !== 0) {
         if (runtime.restartCount < 5) {
           runtime.restartCount++;
@@ -279,10 +274,8 @@ function stopService(id) {
 
   try {
     if (os.platform() === 'win32') {
-      // Di Windows, gunakan taskkill tree-kill untuk membersihkan proses anak & zombie
       exec(`taskkill /pid ${pid} /T /F`, (err) => {
         if (err) {
-          // Fallback ke child.kill jika taskkill gagal
           try { runtime.child.kill('SIGKILL'); } catch (_) {}
         }
       });
@@ -340,13 +333,12 @@ function stopAllServices() {
   return results;
 }
 
-// Inisialisasi service yang memiliki konfigurasi autoStart: true saat server dinyalakan
 function initAutoStartServices() {
   const services = loadServices();
   const autoStarts = services.filter(s => s.autoStart);
   if (autoStarts.length === 0) return;
 
-  console.log(`[PROCESS MANAGER] Menjalankan ${autoStarts.length} service auto-start...`);
+  console.log(`[SERVICE MANAGER] Menjalankan ${autoStarts.length} service auto-start...`);
   autoStarts.forEach(s => {
     setTimeout(() => {
       startService(s.id);
@@ -366,5 +358,6 @@ module.exports = {
   clearServiceLogs,
   startAllServices,
   stopAllServices,
-  initAutoStartServices
+  initAutoStartServices,
+  logEmitter
 };
