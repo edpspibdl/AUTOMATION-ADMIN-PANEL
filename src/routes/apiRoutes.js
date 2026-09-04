@@ -8,6 +8,7 @@ const { setupSchedulers, isAnyTaskRunning } = require('../schedulers/schedulerMa
 const { searchStockApi, ensureValidSession } = require('../services/stockService');
 const { addLog, getLogs, clearLogs, addIasLog, getIasLogs, clearIasLogs, logEmitter } = require('../utils/logger');
 const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
+const processManager = require('../services/processManager');
 
 // 1. Ambil Konfigurasi Saat Ini
 router.get('/config', (req, res) => {
@@ -193,10 +194,20 @@ router.get('/logs/stream', (req, res) => {
     res.write(`event: ias-clear\ndata: {}\n\n`);
   };
 
+  const onServiceLog = (entry) => {
+    res.write(`event: service-log\ndata: ${JSON.stringify(entry)}\n\n`);
+  };
+
+  const onServiceStatus = (entry) => {
+    res.write(`event: service-status\ndata: ${JSON.stringify(entry)}\n\n`);
+  };
+
   logEmitter.on('stokpoin-log', onStokpoinLog);
   logEmitter.on('stokpoin-clear', onStokpoinClear);
   logEmitter.on('ias-log', onIasLog);
   logEmitter.on('ias-clear', onIasClear);
+  logEmitter.on('service-log', onServiceLog);
+  logEmitter.on('service-status', onServiceStatus);
 
   // Heartbeat ping setiap 15 detik agar koneksi tetap stabil
   const heartbeat = setInterval(() => {
@@ -210,6 +221,8 @@ router.get('/logs/stream', (req, res) => {
     logEmitter.removeListener('stokpoin-clear', onStokpoinClear);
     logEmitter.removeListener('ias-log', onIasLog);
     logEmitter.removeListener('ias-clear', onIasClear);
+    logEmitter.removeListener('service-log', onServiceLog);
+    logEmitter.removeListener('service-status', onServiceStatus);
   });
 });
 
@@ -570,5 +583,79 @@ router.get('/ias/kroscek/export-csv', (req, res) => {
   res.send(csvContent);
 });
 
+// ==========================================
+// SERVICE MANAGER ROUTES (Manajemen Service)
+// ==========================================
+router.get('/services', (req, res) => {
+  const services = processManager.getServices();
+  res.json({ success: true, services });
+});
+
+router.get('/services/:id', (req, res) => {
+  const service = processManager.getServiceById(req.params.id);
+  if (!service) return res.status(404).json({ success: false, error: 'Service tidak ditemukan.' });
+  res.json({ success: true, service });
+});
+
+router.post('/services', (req, res) => {
+  const { name, command, description, cwd, autoStart, autoRestart } = req.body;
+  if (!name || !command) {
+    return res.status(400).json({ success: false, error: 'Nama service dan perintah (command) wajib diisi.' });
+  }
+  const created = processManager.addService({ name, command, description, cwd, autoStart, autoRestart });
+  res.json({ success: true, service: created });
+});
+
+router.put('/services/:id', (req, res) => {
+  const updated = processManager.updateService(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ success: false, error: 'Service tidak ditemukan.' });
+  res.json({ success: true, service: updated });
+});
+
+router.delete('/services/:id', (req, res) => {
+  const deleted = processManager.deleteService(req.params.id);
+  res.json({ success: true });
+});
+
+router.post('/services/:id/start', (req, res) => {
+  const result = processManager.startService(req.params.id);
+  if (!result.success) return res.status(400).json(result);
+  res.json(result);
+});
+
+router.post('/services/:id/stop', (req, res) => {
+  const result = processManager.stopService(req.params.id);
+  if (!result.success) return res.status(400).json(result);
+  res.json(result);
+});
+
+router.post('/services/:id/restart', async (req, res) => {
+  const result = await processManager.restartService(req.params.id);
+  if (!result.success) return res.status(400).json(result);
+  res.json(result);
+});
+
+router.get('/services/:id/logs', (req, res) => {
+  const srv = processManager.getServiceById(req.params.id);
+  if (!srv) return res.status(404).json({ success: false, error: 'Service tidak ditemukan.' });
+  res.json({ success: true, logs: srv.logs || [] });
+});
+
+router.post('/services/:id/logs/clear', (req, res) => {
+  processManager.clearServiceLogs(req.params.id);
+  res.json({ success: true });
+});
+
+router.post('/services/start-all', (req, res) => {
+  const results = processManager.startAllServices();
+  res.json({ success: true, results });
+});
+
+router.post('/services/stop-all', (req, res) => {
+  const results = processManager.stopAllServices();
+  res.json({ success: true, results });
+});
+
 module.exports = router;
+
 

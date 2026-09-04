@@ -53,6 +53,16 @@
             </div>
             <span class="nav-pill nav-pill-new">Baru</span>
           </button>
+
+          <!-- Menu 3: Manajemen Service -->
+          <button class="nav-link" data-view="viewServices" id="navServices">
+            <span class="nav-icon">⚙️</span>
+            <div class="nav-text">
+              <span class="nav-title">Manajemen Service</span>
+              <span class="nav-desc">Multi-Program & Background Worker</span>
+            </div>
+            <span class="nav-pill" id="badgeSidebarServiceCount" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">0 Aktif</span>
+          </button>
         </div>
 
         <div class="nav-section mt-auto">
@@ -895,6 +905,134 @@
         </div>
       </section>
 
+      <!-- ======================================================================
+           VIEW 3: MANAJEMEN SERVICE (Multi-Process & Program Manager)
+           ====================================================================== -->
+      <section class="admin-view" id="viewServices">
+        <!-- 1. Top Action Toolbar -->
+        <div class="glass-card mb-3" style="padding: 16px 22px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <h2 style="font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 0;">
+                <span>⚙️</span> Pengelola Program & Background Service
+              </h2>
+              <p style="font-size: 12.5px; color: var(--text-dim); margin-top: 4px; margin-bottom: 0;">
+                Jalankan, pantau log, hentikan, dan kelola script otomatisasi Anda (Node.js, Python, Batch, dll.) dari satu web.
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-primary" id="btnOpenAddServiceModal">
+                <span>➕</span> Tambah Service Baru
+              </button>
+              <button type="button" class="btn btn-sm btn-success" id="btnStartAllServices">
+                <span>▶️</span> Jalankan Semua
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="btnStopAllServices">
+                <span>⏹️</span> Hentikan Semua
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="btnRefreshServicesList">
+                <span>🔄</span> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Metrics Bar -->
+        <div class="metrics-grid mb-3">
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">📦</div>
+            <div class="metric-info">
+              <span class="metric-label">Total Terdaftar</span>
+              <h3 class="metric-value" id="cardTotalServices">0 Service</h3>
+              <span class="metric-detail">Program terdaftar di sistem</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">🟢</div>
+            <div class="metric-info">
+              <span class="metric-label">Service Aktif (Running)</span>
+              <h3 class="metric-value" id="cardRunningServices" style="color: #22c55e;">0 Berjalan</h3>
+              <span class="metric-detail" id="cardRunningDetail">0 proses aktif</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">🔴</div>
+            <div class="metric-info">
+              <span class="metric-label">Service Berhenti</span>
+              <h3 class="metric-value" id="cardStoppedServices">0 Berhenti</h3>
+              <span class="metric-detail">Status stopped / idle</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">⚡</div>
+            <div class="metric-info">
+              <span class="metric-label">Mode Eksekusi</span>
+              <h3 class="metric-value" style="font-size: 16px;">Node Child Process</h3>
+              <span class="metric-detail">Tree-Kill & Realtime Stream</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. List of Services Grid -->
+        <div class="glass-card mb-3" style="padding: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <h3 style="font-size: 15px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <span>📋</span> Daftar Service & Program
+            </h3>
+            <span class="badge badge-info" id="badgeServiceTotalCount">0 Terdaftar</span>
+          </div>
+
+          <!-- Container Grid Service Cards -->
+          <div id="servicesContainer" class="services-cards-grid">
+            <div class="empty-state" style="text-align: center; padding: 40px 20px; color: var(--text-dim);">
+              <span style="font-size: 42px; display: block; margin-bottom: 12px;">⚙️</span>
+              <h4 style="font-weight: 700; margin-bottom: 6px;">Belum Ada Service Terdaftar</h4>
+              <p style="font-size: 13px; max-width: 420px; margin: 0 auto 16px;">
+                Klik tombol "Tambah Service Baru" di atas untuk mendaftarkan script atau program yang ingin Anda jalankan di background.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Dedicated Live Terminal Console per Service -->
+        <div class="glass-card terminal-card mt-3">
+          <div class="card-header terminal-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="terminal-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="terminal-title" id="terminalServiceTitle">Live Terminal: (Pilih Service)</span>
+              <span id="serviceSseStatus" class="badge badge-success" style="font-size: 10px; margin-left: 8px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;">
+                <span class="live-dot" style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+                <span>Live Realtime</span>
+              </span>
+            </div>
+
+            <!-- Terminal Toolbar: Service Selector & Actions -->
+            <div class="terminal-actions" style="display: flex; align-items: center; gap: 8px;">
+              <select id="selectConsoleService" class="custom-input" style="height: 28px; font-size: 11px; padding: 2px 8px; max-width: 220px; background: rgba(0,0,0,0.4); color: #fff;">
+                <option value="">-- Pilih Service --</option>
+              </select>
+              <label style="font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="chkAutoScrollServiceConsole" checked> Auto-Scroll
+              </label>
+              <button type="button" class="btn btn-xs btn-outline" id="btnCopyServiceLogs">Salin</button>
+              <button type="button" class="btn btn-xs btn-ghost" id="btnClearServiceConsole">Bersihkan</button>
+            </div>
+          </div>
+
+          <div class="terminal-body" id="logServiceConsole" style="min-height: 220px; max-height: 360px;">
+            <div class="log-line info">
+              <span class="log-time">[--:--:--]</span>
+              <span class="log-msg">Pilih salah satu service di atas atau klik tombol "Log" pada kartu service untuk melihat live console output.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 
@@ -1111,6 +1249,67 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Tambah / Edit Service -->
+  <div class="modal-overlay" id="serviceModalOverlay">
+    <div class="modal-card modal-card-md">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">⚙️</span>
+          <div>
+            <h3 id="serviceModalTitle">Daftarkan Program / Service Baru</h3>
+            <p class="modal-sub">Konfigurasikan perintah program yang akan dijalankan di latar belakang</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseServiceModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formServiceModal" onsubmit="return false;">
+          <input type="hidden" id="inputServiceId" value="">
+
+          <div class="form-group mb-3">
+            <label class="form-label" style="font-weight: 600; font-size: 12.5px;">Nama Service / Program <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="inputServiceName" class="custom-input" placeholder="Contoh: Bot Notifikasi / Sinkronisasi Data" required>
+            <small style="color: var(--text-dim); font-size: 11px;">Nama pengenal yang mudah dibaca di dashboard.</small>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" style="font-weight: 600; font-size: 12.5px;">Perintah Eksekusi (Command) <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="inputServiceCommand" class="custom-input" placeholder="Contoh: node worker.js ATAU python sync.py ATAU script.bat" required style="font-family: 'JetBrains Mono', monospace;">
+            <small style="color: var(--text-dim); font-size: 11px;">Perintah terminal apa saja yang valid di sistem (Node, Python, Bat, dll.).</small>
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" style="font-weight: 600; font-size: 12.5px;">Keterangan / Deskripsi Singkat</label>
+            <input type="text" id="inputServiceDesc" class="custom-input" placeholder="Keterangan singkat mengenai tugas program ini">
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="form-label" style="font-weight: 600; font-size: 12.5px;">Folder Kerja (Working Directory / CWD)</label>
+            <input type="text" id="inputServiceCwd" class="custom-input" placeholder="Kosongkan jika di root folder proyek ini">
+            <small style="color: var(--text-dim); font-size: 11px;">Biarkan kosong untuk menjalankan di folder proyek saat ini.</small>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 12.5px; cursor: pointer;">
+              <input type="checkbox" id="chkServiceAutoStart">
+              <span><strong>Auto-Start:</strong> Otomatis jalankan saat server Admin Panel pertama kali dinyalakan.</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 12.5px; cursor: pointer;">
+              <input type="checkbox" id="chkServiceAutoRestart" checked>
+              <span><strong>Auto-Restart:</strong> Otomatis jalankan ulang jika program mengalami crash tak terduga.</span>
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" id="btnCancelServiceModal">Batal</button>
+        <button class="btn btn-sm btn-primary" id="btnSaveServiceModal">
+          <span>💾</span> Simpan Service
+        </button>
       </div>
     </div>
   </div>

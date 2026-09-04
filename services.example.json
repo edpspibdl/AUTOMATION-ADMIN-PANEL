@@ -1,0 +1,12 @@
+[
+  {
+    "id": "srv_sample_ping",
+    "name": "Service Monitor & Ping Test",
+    "description": "Contoh script pengecekan background ping setiap 10 detik",
+    "command": "node -e \"console.log('Service berjalan...'); setInterval(() => console.log(new Date().toLocaleTimeString() + ' - Ping OK'), 10000);\"",
+    "cwd": "",
+    "autoStart": false,
+    "autoRestart": true,
+    "createdAt": "2026-09-04T00:00:00.000Z"
+  }
+]

@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const apiRoutes = require('./src/routes/apiRoutes');
 const { setupSchedulers } = require('./src/schedulers/schedulerManager');
+const { initAutoStartServices } = require('./src/services/processManager');
 const { addLog } = require('./src/utils/logger');
 require('dotenv').config();
 
@@ -33,4 +34,5 @@ app.listen(PORT, () => {
 
   addLog('info', `Server Web UI berjalan di http://localhost:${PORT}`);
   setupSchedulers();
+  initAutoStartServices();
 });
