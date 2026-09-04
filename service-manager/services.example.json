@@ -1,10 +1,22 @@
 [
   {
-    "id": "srv_sample_ping",
-    "name": "Service Monitor & Ping Test",
-    "description": "Contoh script pengecekan background ping setiap 10 detik",
-    "command": "node -e \"console.log('Service berjalan...'); setInterval(() => console.log(new Date().toLocaleTimeString() + ' - Ping OK'), 10000);\"",
-    "cwd": "",
+    "id": "srv_pbidm",
+    "name": "QR Code IPP PBIDM (Indogrosir)",
+    "description": "Generator dan Dekriptor QR Code Serah Terima IPP PBIDM Indogrosir",
+    "command": "node server.js",
+    "cwd": "D:\\Projek\\pbidm",
+    "port": 3050,
+    "autoStart": false,
+    "autoRestart": true,
+    "createdAt": "2026-09-04T00:00:00.000Z"
+  },
+  {
+    "id": "srv_stokpoin",
+    "name": "CMS StokPoin & IAS Automation",
+    "description": "Dashboard Otomasi Web IAS & Sinkronisasi CMS StokPoin Indogrosir",
+    "command": "node server.js",
+    "cwd": "D:\\Projek\\coba-coba",
+    "port": 3000,
     "autoStart": false,
     "autoRestart": true,
     "createdAt": "2026-09-04T00:00:00.000Z"

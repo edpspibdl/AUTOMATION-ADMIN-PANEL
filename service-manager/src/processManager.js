@@ -2,6 +2,7 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const net = require('net');
 const EventEmitter = require('events');
 
 const logEmitter = new EventEmitter();
@@ -27,6 +28,33 @@ function formatUptime(ms) {
   if (mins > 0 || hours > 0 || days > 0) parts.push(`${mins}m`);
   parts.push(`${secs}d`);
   return parts.join(' ');
+}
+
+// Cek apakah port tertentu sedang terbuka / listening
+function checkPortStatus(port, host = '127.0.0.1', timeout = 400) {
+  return new Promise((resolve) => {
+    if (!port) return resolve(null);
+    const socket = new net.Socket();
+    let status = 'CLOSED';
+
+    socket.setTimeout(timeout);
+    socket.once('connect', () => {
+      status = 'OPEN';
+      socket.destroy();
+    });
+    socket.once('timeout', () => {
+      status = 'CLOSED';
+      socket.destroy();
+    });
+    socket.once('error', () => {
+      status = 'CLOSED';
+    });
+    socket.once('close', () => {
+      resolve(status);
+    });
+
+    socket.connect(port, host);
+  });
 }
 
 function loadServices() {
@@ -55,12 +83,13 @@ function saveServices(services) {
   }
 }
 
-function getServices() {
+async function getServices() {
   const list = loadServices();
-  return list.map(srv => {
+  const results = await Promise.all(list.map(async (srv) => {
     const runtime = activeProcesses.get(srv.id);
     const isRunning = runtime && runtime.status === 'RUNNING';
     const uptimeMs = isRunning && runtime.startTime ? Date.now() - runtime.startTime : 0;
+    const portStatus = srv.port ? await checkPortStatus(srv.port) : null;
 
     return {
       ...srv,
@@ -69,12 +98,15 @@ function getServices() {
       startTime: runtime ? runtime.startTime : null,
       uptime: uptimeMs,
       uptimeFormatted: isRunning ? formatUptime(uptimeMs) : '-',
-      logCount: runtime ? runtime.logs.length : 0
+      logCount: runtime ? runtime.logs.length : 0,
+      port: srv.port ? parseInt(srv.port, 10) : null,
+      portStatus
     };
-  });
+  }));
+  return results;
 }
 
-function getServiceById(id) {
+async function getServiceById(id) {
   const services = loadServices();
   const srv = services.find(s => s.id === id);
   if (!srv) return null;
@@ -82,6 +114,7 @@ function getServiceById(id) {
   const runtime = activeProcesses.get(id);
   const isRunning = runtime && runtime.status === 'RUNNING';
   const uptimeMs = isRunning && runtime.startTime ? Date.now() - runtime.startTime : 0;
+  const portStatus = srv.port ? await checkPortStatus(srv.port) : null;
 
   return {
     ...srv,
@@ -90,7 +123,9 @@ function getServiceById(id) {
     startTime: runtime ? runtime.startTime : null,
     uptime: uptimeMs,
     uptimeFormatted: isRunning ? formatUptime(uptimeMs) : '-',
-    logs: runtime ? runtime.logs : []
+    logs: runtime ? runtime.logs : [],
+    port: srv.port ? parseInt(srv.port, 10) : null,
+    portStatus
   };
 }
 
@@ -102,6 +137,7 @@ function addService(data) {
     description: (data.description || '').trim(),
     command: (data.command || '').trim(),
     cwd: (data.cwd || '').trim(),
+    port: data.port ? parseInt(data.port, 10) : null,
     autoStart: Boolean(data.autoStart),
     autoRestart: data.autoRestart !== undefined ? Boolean(data.autoRestart) : true,
     createdAt: new Date().toISOString()
@@ -123,6 +159,7 @@ function updateService(id, data) {
     description: data.description !== undefined ? data.description.trim() : services[idx].description,
     command: data.command !== undefined ? data.command.trim() : services[idx].command,
     cwd: data.cwd !== undefined ? data.cwd.trim() : services[idx].cwd,
+    port: data.port !== undefined && data.port !== '' ? parseInt(data.port, 10) : null,
     autoStart: data.autoStart !== undefined ? Boolean(data.autoStart) : services[idx].autoStart,
     autoRestart: data.autoRestart !== undefined ? Boolean(data.autoRestart) : services[idx].autoRestart
   };
@@ -184,10 +221,17 @@ function startService(id) {
   appendLog(id, `🚀 Memulai service: "${srv.name}" (Perintah: ${srv.command})...`, 'system');
 
   try {
+    const childEnv = { ...process.env };
+    if (srv.port) {
+      childEnv.PORT = srv.port.toString();
+    } else {
+      delete childEnv.PORT;
+    }
+
     const child = spawn(srv.command, {
       shell: true,
       cwd: workingDir,
-      env: { ...process.env },
+      env: childEnv,
       windowsHide: true
     });
 

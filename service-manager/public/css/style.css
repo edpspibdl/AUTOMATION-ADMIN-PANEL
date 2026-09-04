@@ -458,6 +458,48 @@ body {
   border: 1px solid var(--border-color);
 }
 
+.port-tag-online {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
+.port-tag-offline {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.dot-port {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-port.online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.dot-port.offline {
+  background: #64748b;
+}
+
+.btn-web-active {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #10b981 !important;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-web-active:hover {
+  background: #10b981;
+  color: #fff !important;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
 .service-card-actions {
   display: flex;
   align-items: center;

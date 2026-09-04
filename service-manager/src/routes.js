@@ -4,25 +4,25 @@ const processManager = require('./processManager');
 const { logEmitter } = processManager;
 
 // 1. Get all services
-router.get('/services', (req, res) => {
-  const services = processManager.getServices();
+router.get('/services', async (req, res) => {
+  const services = await processManager.getServices();
   res.json({ success: true, services });
 });
 
 // 2. Get service detail
-router.get('/services/:id', (req, res) => {
-  const service = processManager.getServiceById(req.params.id);
+router.get('/services/:id', async (req, res) => {
+  const service = await processManager.getServiceById(req.params.id);
   if (!service) return res.status(404).json({ success: false, error: 'Service tidak ditemukan.' });
   res.json({ success: true, service });
 });
 
 // 3. Add new service
 router.post('/services', (req, res) => {
-  const { name, command, description, cwd, autoStart, autoRestart } = req.body;
+  const { name, command, description, cwd, port, autoStart, autoRestart } = req.body;
   if (!name || !command) {
     return res.status(400).json({ success: false, error: 'Nama dan perintah (command) wajib diisi.' });
   }
-  const created = processManager.addService({ name, command, description, cwd, autoStart, autoRestart });
+  const created = processManager.addService({ name, command, description, cwd, port, autoStart, autoRestart });
   res.json({ success: true, service: created });
 });
 
@@ -61,8 +61,8 @@ router.post('/services/:id/restart', async (req, res) => {
 });
 
 // 9. Get logs
-router.get('/services/:id/logs', (req, res) => {
-  const srv = processManager.getServiceById(req.params.id);
+router.get('/services/:id/logs', async (req, res) => {
+  const srv = await processManager.getServiceById(req.params.id);
   if (!srv) return res.status(404).json({ success: false, error: 'Service tidak ditemukan.' });
   res.json({ success: true, logs: srv.logs || [] });
 });
@@ -85,7 +85,7 @@ router.post('/services/stop-all', (req, res) => {
 });
 
 // 12. Realtime SSE Stream
-router.get('/stream', (req, res) => {
+router.get('/stream', async (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -93,7 +93,8 @@ router.get('/stream', (req, res) => {
   });
   if (res.flushHeaders) res.flushHeaders();
 
-  res.write(`event: init\ndata: ${JSON.stringify({ services: processManager.getServices() })}\n\n`);
+  const initialServices = await processManager.getServices();
+  res.write(`event: init\ndata: ${JSON.stringify({ services: initialServices })}\n\n`);
 
   const onServiceLog = (entry) => {
     res.write(`event: service-log\ndata: ${JSON.stringify(entry)}\n\n`);

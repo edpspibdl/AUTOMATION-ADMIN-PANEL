@@ -36,6 +36,7 @@ const inputServiceName = document.getElementById('inputServiceName');
 const inputServiceCommand = document.getElementById('inputServiceCommand');
 const inputServiceDesc = document.getElementById('inputServiceDesc');
 const inputServiceCwd = document.getElementById('inputServiceCwd');
+const inputServicePort = document.getElementById('inputServicePort');
 const chkServiceAutoStart = document.getElementById('chkServiceAutoStart');
 const chkServiceAutoRestart = document.getElementById('chkServiceAutoRestart');
 
@@ -173,6 +174,12 @@ function renderServicesList() {
               ⏱️ Uptime: <strong>${s.uptimeFormatted || '0d'}</strong>
             </span>
           ` : ''}
+          ${s.port ? `
+            <span class="service-meta-tag ${s.portStatus === 'OPEN' ? 'port-tag-online' : 'port-tag-offline'}" title="Port ${s.port} Status: ${s.portStatus === 'OPEN' ? 'Port sedang mendengarkan (Online)' : 'Port belum aktif / tertutup (Offline)'}">
+              <span class="dot-port ${s.portStatus === 'OPEN' ? 'online' : 'offline'}"></span>
+              Port: <strong>${s.port}</strong> ${s.portStatus === 'OPEN' ? '🟢 Online' : '⚪ Offline'}
+            </span>
+          ` : ''}
           ${s.autoStart ? `
             <span class="service-meta-tag" title="Auto-start aktif">⚡ Auto-Start</span>
           ` : ''}
@@ -180,7 +187,7 @@ function renderServicesList() {
             <span class="service-meta-tag" title="Auto-restart jika crash">🔄 Auto-Restart</span>
           ` : ''}
           ${s.cwd ? `
-            <span class="service-meta-tag" title="Folder: ${escapeHtml(s.cwd)}">📁 CWD</span>
+            <span class="service-meta-tag" title="Folder: ${escapeHtml(s.cwd)}">📁 ${escapeHtml(s.cwd)}</span>
           ` : ''}
         </div>
 
@@ -198,6 +205,11 @@ function renderServicesList() {
                 ▶️ Start
               </button>
             `}
+            ${s.port ? `
+              <a href="http://localhost:${s.port}" target="_blank" class="btn btn-xs ${s.portStatus === 'OPEN' ? 'btn-web-active' : 'btn-outline'}" title="Buka http://localhost:${s.port} di browser">
+                🌐 Web :${s.port}
+              </a>
+            ` : ''}
             <button class="btn btn-xs btn-outline" onclick="selectServiceForConsole('${s.id}', true)" title="Buka Live Terminal Log">
               📜 Log
             </button>
@@ -346,6 +358,7 @@ function openServiceModal(srv = null) {
     inputServiceCommand.value = srv.command;
     inputServiceDesc.value = srv.description || '';
     inputServiceCwd.value = srv.cwd || '';
+    if (inputServicePort) inputServicePort.value = srv.port || '';
     chkServiceAutoStart.checked = Boolean(srv.autoStart);
     chkServiceAutoRestart.checked = srv.autoRestart !== undefined ? Boolean(srv.autoRestart) : true;
   } else {
@@ -355,6 +368,7 @@ function openServiceModal(srv = null) {
     inputServiceCommand.value = '';
     inputServiceDesc.value = '';
     inputServiceCwd.value = '';
+    if (inputServicePort) inputServicePort.value = '';
     chkServiceAutoStart.checked = false;
     chkServiceAutoRestart.checked = true;
   }
@@ -387,6 +401,8 @@ if (btnSaveServiceModal) {
     const command = inputServiceCommand.value.trim();
     const description = inputServiceDesc.value.trim();
     const cwd = inputServiceCwd.value.trim();
+    const portVal = inputServicePort ? inputServicePort.value.trim() : '';
+    const port = portVal ? parseInt(portVal, 10) : null;
     const autoStart = chkServiceAutoStart.checked;
     const autoRestart = chkServiceAutoRestart.checked;
 
@@ -395,7 +411,7 @@ if (btnSaveServiceModal) {
       return;
     }
 
-    const payload = { name, command, description, cwd, autoStart, autoRestart };
+    const payload = { name, command, description, cwd, port, autoStart, autoRestart };
 
     try {
       let res;
@@ -606,6 +622,7 @@ function initStream() {
   }
 }
 
-// Initial Load
+// Initial Load & Continuous Refresh for Port/Uptime
 fetchServicesList();
 initStream();
+setInterval(fetchServicesList, 5000);
