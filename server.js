@@ -24,19 +24,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Mount API Routes
 app.use('/api', apiRoutes);
 
-// Pastikan rute root ('/') dan fallback selalu menyajikan dashboard UI
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Fallback untuk halaman frontend jika rute API tidak ditemukan
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
-  }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // Jalankan Server & Penjadwal
 app.listen(PORT, () => {
   console.log(`\n======================================================`);
