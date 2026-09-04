@@ -6,7 +6,7 @@ const { executeMarminGuard } = require('../schedulers/marminGuardJob');
 const { executeDailySchedule } = require('../schedulers/dailyScheduleJob');
 const { setupSchedulers, isAnyTaskRunning } = require('../schedulers/schedulerManager');
 const { searchStockApi, ensureValidSession } = require('../services/stockService');
-const { addLog, getLogs, clearLogs, addIasLog, getIasLogs, clearIasLogs } = require('../utils/logger');
+const { addLog, getLogs, clearLogs, addIasLog, getIasLogs, clearIasLogs, logEmitter } = require('../utils/logger');
 const { normalizeAndDeduplicatePlus } = require('../utils/pluHelper');
 
 // 1. Ambil Konfigurasi Saat Ini
@@ -155,6 +155,62 @@ router.get('/ias/logs', (req, res) => {
 router.post('/ias/logs/clear', (req, res) => {
   clearIasLogs();
   res.json({ success: true });
+});
+
+// Stream Realtime Logs (Server-Sent Events / SSE)
+router.get('/logs/stream', (req, res) => {
+  // Set SSE Headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive'
+  });
+  if (res.flushHeaders) res.flushHeaders();
+
+  // Kirim snapshot log awal saat pertama terhubung
+  const initialPayload = {
+    stokpoinLogs: getLogs(),
+    iasLogs: getIasLogs(),
+    isRunning: isAnyTaskRunning(),
+    activeIasTask: iasService ? iasService.activeTask : null
+  };
+  res.write(`event: init\ndata: ${JSON.stringify(initialPayload)}\n\n`);
+
+  // Event Handlers Realtime Push (0ms latency)
+  const onStokpoinLog = (entry) => {
+    res.write(`event: stokpoin-log\ndata: ${JSON.stringify(entry)}\n\n`);
+  };
+
+  const onStokpoinClear = () => {
+    res.write(`event: stokpoin-clear\ndata: {}\n\n`);
+  };
+
+  const onIasLog = (entry) => {
+    res.write(`event: ias-log\ndata: ${JSON.stringify(entry)}\n\n`);
+  };
+
+  const onIasClear = () => {
+    res.write(`event: ias-clear\ndata: {}\n\n`);
+  };
+
+  logEmitter.on('stokpoin-log', onStokpoinLog);
+  logEmitter.on('stokpoin-clear', onStokpoinClear);
+  logEmitter.on('ias-log', onIasLog);
+  logEmitter.on('ias-clear', onIasClear);
+
+  // Heartbeat ping setiap 15 detik agar koneksi tetap stabil
+  const heartbeat = setInterval(() => {
+    res.write(': ping\n\n');
+  }, 15000);
+
+  // Pembersihan memori saat tab/browser ditutup
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    logEmitter.removeListener('stokpoin-log', onStokpoinLog);
+    logEmitter.removeListener('stokpoin-clear', onStokpoinClear);
+    logEmitter.removeListener('ias-log', onIasLog);
+    logEmitter.removeListener('ias-clear', onIasClear);
+  });
 });
 
 // Ambil Daftar Menu Web IAS

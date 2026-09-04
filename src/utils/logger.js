@@ -1,3 +1,7 @@
+const EventEmitter = require('events');
+const logEmitter = new EventEmitter();
+logEmitter.setMaxListeners(100);
+
 // In-Memory Live Logs Buffers
 const MAX_LOGS = 200;
 let stokpoinLogs = [];
@@ -18,6 +22,7 @@ function addLog(level, message, details = null) {
     stokpoinLogs.shift();
   }
   console.log(`[${timestamp}] [STOKPOIN] [${level.toUpperCase()}] ${message}`);
+  logEmitter.emit('stokpoin-log', entry);
   return entry;
 }
 
@@ -27,6 +32,7 @@ function getLogs() {
 
 function clearLogs() {
   stokpoinLogs = [];
+  logEmitter.emit('stokpoin-clear');
   addLog('info', 'Log aktivitas CMS StokPoin telah dibersihkan.');
 }
 
@@ -45,6 +51,7 @@ function addIasLog(level, message, details = null) {
     iasLogs.shift();
   }
   console.log(`[${timestamp}] [WEB IAS] [${level.toUpperCase()}] ${message}`);
+  logEmitter.emit('ias-log', entry);
   return entry;
 }
 
@@ -54,6 +61,7 @@ function getIasLogs() {
 
 function clearIasLogs() {
   iasLogs = [];
+  logEmitter.emit('ias-clear');
   addIasLog('info', 'Log aktivitas Web IAS telah dibersihkan.');
 }
 
@@ -63,6 +71,7 @@ module.exports = {
   clearLogs,
   addIasLog,
   getIasLogs,
-  clearIasLogs
+  clearIasLogs,
+  logEmitter
 };
 

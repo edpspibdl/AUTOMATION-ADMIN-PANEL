@@ -72,6 +72,8 @@ const btnRunManualDirect = document.getElementById('btnRunManualDirect');
 // Logs & Preview Elements
 const btnClearLogs = document.getElementById('btnClearLogs');
 const logConsole = document.getElementById('logConsole');
+const btnClearIasLogs = document.getElementById('btnClearIasLogs');
+const logIasConsole = document.getElementById('logIasConsole');
 const pluChipsContainer = document.getElementById('pluChipsContainer');
 const badgePluListCount = document.getElementById('badgePluListCount');
 const badgeDbCount = document.getElementById('badgeDbCount');
@@ -604,24 +606,59 @@ function triggerManualScheduleNow() {
   );
 }
 
-// 13. Live Logs Polling
-let lastLogCount = 0;
-async function fetchLogs() {
-  try {
-    const res = await fetch('/api/logs');
-    const data = await res.json();
+// 13. Realtime Terminal Log Streaming (Server-Sent Events / SSE 0ms Latency)
+const stokpoinSseStatus = document.getElementById('stokpoinSseStatus');
+const stokpoinSseText = document.getElementById('stokpoinSseText');
+const iasSseStatus = document.getElementById('iasSseStatus');
+const iasSseText = document.getElementById('iasSseText');
 
-    updateRunningState(data.isRunning);
+let logEventSource = null;
+let sseReconnectTimer = null;
 
-    if (data.logs && data.logs.length !== lastLogCount) {
-      lastLogCount = data.logs.length;
-      renderLogs(data.logs);
-    }
-  } catch (err) {}
+function setSseStatus(connected) {
+  const statusClass = connected ? 'badge badge-success' : 'badge badge-warning';
+  const statusHtml = connected
+    ? `<span class="live-dot" style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span> <span>Realtime (0ms)</span>`
+    : `<span class="live-dot" style="width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; display: inline-block;"></span> <span>Menghubungkan...</span>`;
+
+  if (stokpoinSseStatus) {
+    stokpoinSseStatus.className = statusClass;
+    stokpoinSseStatus.innerHTML = statusHtml;
+  }
+  if (iasSseStatus) {
+    iasSseStatus.className = statusClass;
+    iasSseStatus.innerHTML = statusHtml;
+  }
+}
+
+function appendSingleLog(container, l, animate = true) {
+  if (!container) return;
+  // Jika hanya ada teks placeholder awal, bersihkan terlebih dahulu
+  const placeholder = container.querySelector('.log-line.info:only-child');
+  if (placeholder && (
+    placeholder.textContent.includes('Belum ada aktivitas') ||
+    placeholder.textContent.includes('Menghubungkan ke server') ||
+    placeholder.textContent.includes('siap menerima instruksi')
+  )) {
+    placeholder.remove();
+  }
+
+  const div = document.createElement('div');
+  div.className = `log-line ${l.level || 'info'}${animate ? ' log-line-new' : ''}`;
+  div.innerHTML = `<span class="log-time">[${l.timestamp}]</span> <span class="log-msg">${escapeHtml(l.message)}</span>`;
+  container.appendChild(div);
+
+  // Batasi maksimal 250 baris agar browser tetap ringan dan responsif
+  while (container.children.length > 250) {
+    container.removeChild(container.firstChild);
+  }
+
+  container.scrollTop = container.scrollHeight;
 }
 
 function renderLogs(logs) {
-  if (logs.length === 0) {
+  if (!logConsole) return;
+  if (!logs || logs.length === 0) {
     logConsole.innerHTML = `
       <div class="log-line info">
         <span class="log-time">[--:--:--]</span>
@@ -631,16 +668,107 @@ function renderLogs(logs) {
     return;
   }
 
-  logConsole.innerHTML = logs.map(l => {
-    return `
-      <div class="log-line ${l.level || 'info'}">
-        <span class="log-time">[${l.timestamp}]</span>
-        <span class="log-msg">${escapeHtml(l.message)}</span>
-      </div>
-    `;
-  }).join('');
+  logConsole.innerHTML = logs.map(l => `
+    <div class="log-line ${l.level || 'info'}">
+      <span class="log-time">[${l.timestamp}]</span>
+      <span class="log-msg">${escapeHtml(l.message)}</span>
+    </div>
+  `).join('');
 
   logConsole.scrollTop = logConsole.scrollHeight;
+}
+
+function renderIasLogs(logs) {
+  if (!logIasConsole) return;
+  if (!logs || logs.length === 0) {
+    logIasConsole.innerHTML = `
+      <div class="log-line info">
+        <span class="log-time">[--:--:--]</span>
+        <span class="log-msg">Belum ada aktivitas log Web IAS.</span>
+      </div>
+    `;
+    return;
+  }
+
+  logIasConsole.innerHTML = logs.map(l => `
+    <div class="log-line ${l.level || 'info'}">
+      <span class="log-time">[${l.timestamp}]</span>
+      <span class="log-msg">${escapeHtml(l.message)}</span>
+    </div>
+  `).join('');
+
+  logIasConsole.scrollTop = logIasConsole.scrollHeight;
+}
+
+function initRealtimeLogStream() {
+  if (logEventSource) {
+    try { logEventSource.close(); } catch (_) {}
+  }
+
+  setSseStatus(false);
+
+  try {
+    logEventSource = new EventSource('/api/logs/stream');
+
+    logEventSource.onopen = () => {
+      setSseStatus(true);
+      if (sseReconnectTimer) {
+        clearTimeout(sseReconnectTimer);
+        sseReconnectTimer = null;
+      }
+    };
+
+    logEventSource.addEventListener('init', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (Array.isArray(data.stokpoinLogs)) renderLogs(data.stokpoinLogs);
+        if (Array.isArray(data.iasLogs)) renderIasLogs(data.iasLogs);
+        if (typeof data.isRunning !== 'undefined') updateRunningState(data.isRunning);
+      } catch (err) {
+        console.error('Error parsing SSE init event:', err);
+      }
+    });
+
+    logEventSource.addEventListener('stokpoin-log', (e) => {
+      try {
+        const entry = JSON.parse(e.data);
+        appendSingleLog(logConsole, entry, true);
+      } catch (err) {
+        console.error('Error parsing SSE stokpoin-log:', err);
+      }
+    });
+
+    logEventSource.addEventListener('stokpoin-clear', () => {
+      renderLogs([]);
+    });
+
+    logEventSource.addEventListener('ias-log', (e) => {
+      try {
+        const entry = JSON.parse(e.data);
+        appendSingleLog(logIasConsole, entry, true);
+      } catch (err) {
+        console.error('Error parsing SSE ias-log:', err);
+      }
+    });
+
+    logEventSource.addEventListener('ias-clear', () => {
+      renderIasLogs([]);
+    });
+
+    logEventSource.onerror = () => {
+      setSseStatus(false);
+      try { logEventSource.close(); } catch (_) {}
+      if (!sseReconnectTimer) {
+        sseReconnectTimer = setTimeout(() => {
+          sseReconnectTimer = null;
+          initRealtimeLogStream();
+        }, 3000);
+      }
+    };
+  } catch (err) {
+    console.error('Gagal menginisialisasi EventSource:', err);
+    setSseStatus(false);
+  }
 }
 
 function escapeHtml(text) {
@@ -649,15 +777,25 @@ function escapeHtml(text) {
   return text.toString().replace(/[&<>"']/g, m => map[m]);
 }
 
-// 14. Clear Logs
+// 14. Clear Logs Handlers
 async function clearLogs() {
   try {
     await fetch('/api/logs/clear', { method: 'POST' });
-    lastLogCount = 0;
-    fetchLogs();
-    showAlert('info', 'Log Dibersihkan', 'Riwayat log aktivitas telah dikosongkan.');
+    renderLogs([]);
+    showAlert('info', 'Log Dibersihkan', 'Riwayat log aktivitas CMS StokPoin telah dikosongkan.');
   } catch (err) {}
 }
+
+async function clearIasLogs() {
+  try {
+    await fetch('/api/ias/logs/clear', { method: 'POST' });
+    renderIasLogs([]);
+    showAlert('info', 'Log Dibersihkan', 'Riwayat log aktivitas Web IAS telah dikosongkan.');
+  } catch (err) {}
+}
+
+if (btnClearLogs) btnClearLogs.addEventListener('click', clearLogs);
+if (btnClearIasLogs) btnClearIasLogs.addEventListener('click', clearIasLogs);
 
 // Event Listeners
 btnSaveConfig.addEventListener('click', saveAllConfig);
@@ -670,7 +808,6 @@ btnRunMarminGuardNow.addEventListener('click', triggerMarminGuardNow);
 btnRunManualDirect.addEventListener('click', triggerManualScheduleNow);
 
 btnRunQueryPreview.addEventListener('click', runQueryPreview);
-btnClearLogs.addEventListener('click', clearLogs);
 
 // PLU Modal Events
 btnOpenPluModal.addEventListener('click', openPluModal);
@@ -836,8 +973,6 @@ const inputIasUser = document.getElementById('inputIasUser');
 const inputIasPassword = document.getElementById('inputIasPassword');
 const btnSaveIasConfig = document.getElementById('btnSaveIasConfig');
 const btnTestIasLogin = document.getElementById('btnTestIasLogin');
-const btnClearIasLogs = document.getElementById('btnClearIasLogs');
-const logIasConsole = document.getElementById('logIasConsole');
 const tableIasBody = document.getElementById('tableIasBody');
 const badgeIasQueueCount = document.getElementById('badgeIasQueueCount');
 const btnRefreshAllIasStatus = document.getElementById('btnRefreshAllIasStatus');
@@ -1105,11 +1240,7 @@ const lppLastStatus = document.getElementById('lppLastStatus');
 function addIasLog(type, msg) {
   if (!logIasConsole) return;
   const time = new Date().toLocaleTimeString('id-ID');
-  const line = document.createElement('div');
-  line.className = `log-line ${type}`;
-  line.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg">${escapeHtml(msg)}</span>`;
-  logIasConsole.appendChild(line);
-  logIasConsole.scrollTop = logIasConsole.scrollHeight;
+  appendSingleLog(logIasConsole, { timestamp: time, level: type, message: msg }, true);
 }
 
 function renderTaskBadge(el, statusText) {
@@ -2360,11 +2491,7 @@ checkIasSessionStatus(false);
 loadLatestRegisterLpp();
 loadKroscekData();
 
-// Poll Live Logs (Terpisah: CMS StokPoin vs Web IAS)
-setInterval(fetchLogs, 1500);
-fetchLogs();
-
-setInterval(fetchIasLogs, 1500);
-fetchIasLogs();
+// Inisialisasi Realtime Terminal Streaming (Server-Sent Events / 0ms Latency)
+initRealtimeLogStream();
 
 

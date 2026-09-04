@@ -1544,4 +1544,21 @@ input:checked + .slider:before {
   cursor: not-allowed !important;
 }
 
+/* Realtime Log Streaming Animations */
+@keyframes logFlash {
+  0% {
+    background: rgba(99, 102, 241, 0.28);
+    border-left: 3px solid #6366f1;
+  }
+  100% {
+    background: transparent;
+    border-left: 3px solid transparent;
+  }
+}
+
+.log-line-new {
+  animation: logFlash 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+
 
