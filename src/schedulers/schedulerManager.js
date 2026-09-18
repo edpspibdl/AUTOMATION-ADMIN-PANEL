@@ -42,26 +42,12 @@ function setupSchedulers() {
   if (config.dailyScheduleEnabled && config.dailyScheduleTime) {
     const [hour, minute] = config.dailyScheduleTime.split(':');
     const cronExpr = `${parseInt(minute, 10)} ${parseInt(hour, 10)} * * *`;
-    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! Menonaktifkan PLU manual setiap hari pukul ${config.dailyScheduleTime} WIB (Cron: ${cronExpr})`);
+    const actionLabel = (config.dailyAction === 'aktif' ? 'Mengaktifkan' : 'Menonaktifkan');
+    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! ${actionLabel} PLU manual setiap hari pukul ${config.dailyScheduleTime} WIB (Cron: ${cronExpr})`);
 
     dailyCronTask = cron.schedule(cronExpr, async () => {
       addLog('info', `🚀 [CRON TRIGGER] Memulai eksekusi jadwal harian PLU manual pada pukul ${config.dailyScheduleTime}...`);
-      await executeDailySchedule(`Jadwal Harian (${config.dailyScheduleTime} WIB)`);
-    });
-  } else {
-    addLog('info', '⏸️ [JADWAL HARIAN MANUAL] Status: NONAKTIF.');
-  }
-
-  // 3. Setup Jadwal Harian Aktif Kembali (misal Jam 08:00 WIB)
-  if (config.dailyScheduleEnabled && config.dailyEnableTime) {
-    const [hour, minute] = config.dailyEnableTime.split(':');
-    const cronExpr = `${parseInt(minute, 10)} ${parseInt(hour, 10)} * * *`;
-    addLog('info', `⏰ [JADWAL HARIAN MANUAL] Aktif! Mengaktifkan PLU manual setiap hari pukul ${config.dailyEnableTime} WIB (Cron: ${cronExpr})`);
-
-    dailyEnableCronTask = cron.schedule(cronExpr, async () => {
-      addLog('info', `🚀 [CRON TRIGGER] Memulai eksekusi jadwal harian PLU manual pada pukul ${config.dailyEnableTime}...`);
-      // Kirim overrideAction 'aktif'
-      await executeDailySchedule(`Jadwal Aktif (${config.dailyEnableTime} WIB)`, 'aktif');
+      await executeDailySchedule(`Jadwal Harian (${config.dailyScheduleTime} WIB)`, config.dailyAction || 'nonaktif');
     });
   } else {
     addLog('info', '⏸️ [JADWAL HARIAN MANUAL] Status: NONAKTIF.');

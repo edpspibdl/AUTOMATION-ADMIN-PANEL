@@ -105,7 +105,7 @@ router.post('/run-manual-now', async (req, res) => {
   if (isAnyTaskRunning()) {
     return res.status(409).json({ success: false, message: 'Tugas lain sedang berlangsung.' });
   }
-  executeDailySchedule('Manual Trigger (Web UI)');
+  executeDailySchedule('Manual Trigger (Web UI)', req.body && req.body.action ? req.body.action : null);
   res.json({ success: true, message: 'Otomatisasi PLU manual telah dimulai.' });
 });
 
@@ -167,12 +167,14 @@ router.get('/logs/stream', (req, res) => {
   });
   if (res.flushHeaders) res.flushHeaders();
 
-  // Kirim snapshot log awal saat pertama terhubung
+  // Kirim snapshot log & status awal saat pertama terhubung
   const initialPayload = {
     stokpoinLogs: getLogs(),
     iasLogs: getIasLogs(),
     isRunning: isAnyTaskRunning(),
-    activeIasTask: iasService ? iasService.activeTask : null
+    activeIasTask: iasService ? iasService.activeTask : null,
+    iasSession: iasService ? iasService.getSessionStatus() : null,
+    iasKroscek: iasService ? iasService.getKroscekData() : null
   };
   res.write(`event: init\ndata: ${JSON.stringify(initialPayload)}\n\n`);
 
@@ -193,10 +195,25 @@ router.get('/logs/stream', (req, res) => {
     res.write(`event: ias-clear\ndata: {}\n\n`);
   };
 
+  const onIasTaskStatus = (data) => {
+    res.write(`event: ias-task-status\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const onIasKroscekUpdate = (data) => {
+    res.write(`event: ias-kroscek-update\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const onIasSessionUpdate = (data) => {
+    res.write(`event: ias-session-update\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
   logEmitter.on('stokpoin-log', onStokpoinLog);
   logEmitter.on('stokpoin-clear', onStokpoinClear);
   logEmitter.on('ias-log', onIasLog);
   logEmitter.on('ias-clear', onIasClear);
+  logEmitter.on('ias-task-status', onIasTaskStatus);
+  logEmitter.on('ias-kroscek-update', onIasKroscekUpdate);
+  logEmitter.on('ias-session-update', onIasSessionUpdate);
 
   // Heartbeat ping setiap 15 detik agar koneksi tetap stabil
   const heartbeat = setInterval(() => {
@@ -210,6 +227,9 @@ router.get('/logs/stream', (req, res) => {
     logEmitter.removeListener('stokpoin-clear', onStokpoinClear);
     logEmitter.removeListener('ias-log', onIasLog);
     logEmitter.removeListener('ias-clear', onIasClear);
+    logEmitter.removeListener('ias-task-status', onIasTaskStatus);
+    logEmitter.removeListener('ias-kroscek-update', onIasKroscekUpdate);
+    logEmitter.removeListener('ias-session-update', onIasSessionUpdate);
   });
 });
 
@@ -458,6 +478,15 @@ router.post('/ias/kroscek/save', (req, res) => {
   }
 });
 
+router.post('/ias/kroscek/auto-sync-all', async (req, res) => {
+  try {
+    const result = await iasService.autoSyncAllKroscek(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/ias/kroscek/sync-lpp01', (req, res) => {
   try {
     const synced = iasService.syncKroscekFromLpp01();
@@ -494,9 +523,54 @@ router.post('/ias/kroscek/fetch-daftar-pembelian', async (req, res) => {
   }
 });
 
+router.post('/ias/kroscek/fetch-transfer-in', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseTransferIn(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-repack', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseRepacking(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/ias/kroscek/fetch-penjualan', async (req, res) => {
   try {
     const result = await iasService.fetchAndParseLaporanPenjualan(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-transfer-out', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseTransferOut(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-hilang', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseHilang(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/ias/kroscek/fetch-so', async (req, res) => {
+  try {
+    const result = await iasService.fetchAndParseAdjustSO(req.body);
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -23,7 +23,7 @@
     <!-- SIDEBAR NAVIGATION -->
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="sidebar-brand">
-        <div class="brand-logo-icon">⚡</div>
+        <div class="brand-logo-icon" style="font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">SPI</div>
         <div class="brand-info">
           <h2 class="brand-title">ADMIN <span>PANEL</span></h2>
           <span class="brand-badge">EDP SPI BDL 1R</span>
@@ -36,7 +36,6 @@
 
           <!-- Menu 1: CMS StokPoin (Active) -->
           <button class="nav-link active" data-view="viewStokPoin" id="navStokPoin">
-            <span class="nav-icon">📦</span>
             <div class="nav-text">
               <span class="nav-title">CMS StokPoin</span>
               <span class="nav-desc">Marmin Guard & PLU Manual</span>
@@ -46,7 +45,6 @@
 
           <!-- Menu 2: Otomasi Web IAS (Baru) -->
           <button class="nav-link" data-view="viewIAS" id="navIAS">
-            <span class="nav-icon">🏢</span>
             <div class="nav-text">
               <span class="nav-title">Otomasi Web IAS</span>
               <span class="nav-desc">Integrasi & Aksi Web IAS</span>
@@ -58,7 +56,6 @@
         <div class="nav-section mt-auto">
           <span class="nav-heading">DATABASE & UTILITIES</span>
           <button class="nav-link nav-link-sub" id="btnSidebarDb">
-            <span class="nav-icon">🐘</span>
             <div class="nav-text">
               <span class="nav-title">Database PostgreSQL</span>
               <span class="nav-desc">172.31.146.253 / spibdl1r</span>
@@ -82,7 +79,7 @@
       <header class="app-header">
         <div class="topbar-left">
           <button class="sidebar-toggle-btn" id="btnToggleSidebar" title="Toggle Sidebar">
-            <span>☰</span>
+            <span>MENU</span>
           </button>
           <div class="breadcrumb-area">
             <span class="breadcrumb-root">Admin Panel</span>
@@ -93,7 +90,6 @@
 
         <div class="header-status">
           <button class="theme-toggle-btn" id="btnThemeToggle" title="Ganti Tema Terang/Gelap">
-            <span class="theme-icon" id="themeIcon">🌙</span>
             <span class="theme-text" id="themeText">Dark</span>
           </button>
           <div class="status-chip" id="serverStatusBadge">
@@ -111,7 +107,6 @@
         <!-- Top Metrics Overview -->
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-icon schedule-icon">🛡️</div>
             <div class="metric-info">
               <span class="metric-label">Guard Margin Minus</span>
               <h3 class="metric-value" id="cardMarminStatus">AKTIF</h3>
@@ -120,7 +115,6 @@
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon time-icon">⏰</div>
             <div class="metric-info">
               <span class="metric-label">Jadwal Harian Manual</span>
               <h3 class="metric-value" id="cardDailyStatus">AKTIF</h3>
@@ -129,7 +123,6 @@
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon plu-icon">🏷️</div>
             <div class="metric-info">
               <span class="metric-label">PLU Manual Terdaftar</span>
               <h3 class="metric-value" id="cardPluCount">0 PLU</h3>
@@ -138,7 +131,6 @@
           </div>
 
           <div class="metric-card">
-            <div class="metric-icon lastrun-icon">🕒</div>
             <div class="metric-info">
               <span class="metric-label">Eksekusi Terakhir</span>
               <h3 class="metric-value" id="cardLastRun">-</h3>
@@ -152,11 +144,10 @@
           <!-- Left Column: Auto-Guard & Manual Schedule Controls -->
           <div class="column-left">
 
-            <!-- Card 1: 🛡️ Auto-Guard Margin Minus PostgreSQL -->
+            <!-- Card 1: Auto-Guard Margin Minus PostgreSQL -->
             <div class="glass-card">
               <div class="card-header">
                 <div class="card-title-group">
-                  <span class="card-icon">🛡️</span>
                   <h2>Pencegah Margin Minus (Auto-Guard PostgreSQL)</h2>
                 </div>
                 <label class="switch-toggle" title="Aktifkan / Matikan Auto-Guard Margin Minus">
@@ -172,44 +163,37 @@
                 <div class="form-row mt-2">
                   <div class="form-group flex-1">
                     <label for="selectMarminInterval">Frekuensi Pengecekan Database</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">🔄</span>
-                      <select id="selectMarminInterval" class="custom-input">
-                        <option value="1">Setiap 1 Menit Sekali</option>
-                        <option value="5" selected>Setiap 5 Menit Sekali</option>
-                        <option value="10">Setiap 10 Menit Sekali</option>
-                        <option value="15">Setiap 15 Menit Sekali</option>
-                        <option value="30">Setiap 30 Menit Sekali</option>
-                        <option value="60">Setiap 1 Jam Sekali</option>
-                      </select>
-                    </div>
+                    <select id="selectMarminInterval" class="custom-input">
+                      <option value="1">Setiap 1 Menit Sekali</option>
+                      <option value="5" selected>Setiap 5 Menit Sekali</option>
+                      <option value="10">Setiap 10 Menit Sekali</option>
+                      <option value="15">Setiap 15 Menit Sekali</option>
+                      <option value="30">Setiap 30 Menit Sekali</option>
+                      <option value="60">Setiap 1 Jam Sekali</option>
+                    </select>
                   </div>
                   <div class="form-group flex-1">
                     <label>Aksi Otomatis</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">⚡</span>
-                      <input type="text" value="Langsung Nonaktifkan di CMS" class="custom-input" disabled
-                        style="opacity:0.85; cursor:not-allowed;">
-                    </div>
+                    <input type="text" value="Langsung Nonaktifkan di CMS" class="custom-input" disabled
+                      style="opacity:0.85; cursor:not-allowed;">
                   </div>
                 </div>
 
                 <div class="action-buttons-row mt-2">
                   <button class="btn btn-outline btn-sm" id="btnOpenDbModal">
-                    <span>🐘</span> Pengaturan Database
+                    Pengaturan Database
                   </button>
                   <button class="btn btn-warning btn-sm" id="btnRunMarminGuardNow">
-                    <span>🛡️</span> Cek & Nonaktifkan Marmin Sekarang
+                    Cek & Nonaktifkan Marmin Sekarang
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- Card 2: ⏰ Jadwal Harian Khusus PLU Manual -->
+            <!-- Card 2: Jadwal Harian Khusus PLU Manual -->
             <div class="glass-card mt-3">
               <div class="card-header">
                 <div class="card-title-group">
-                  <span class="card-icon">⏰</span>
                   <h2>Jadwal Harian PLU Manual (Input Sendiri)</h2>
                 </div>
                 <label class="switch-toggle" title="Aktifkan / Matikan Jadwal Harian Manual">
@@ -222,61 +206,34 @@
                   Menjalankan aksi untuk daftar PLU manual Anda pada jam tertentu setiap hari (misal jam operasional tutup/buka toko).
                 </p>
                 
-                <!-- Baris 1: Pengaturan Jadwal Nonaktif -->
+                <!-- Pengaturan Jadwal Harian & Aksi Dropdown -->
                 <div class="form-row mt-2">
                   <div class="form-group flex-1">
-                    <label for="inputDailyTime">Jam Nonaktifkan (WIB)</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">🕒</span>
-                      <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
-                    </div>
+                    <label for="inputDailyTime">Jam Eksekusi Jadwal (WIB)</label>
+                    <input type="time" id="inputDailyTime" value="22:00" class="custom-input">
                   </div>
 
                   <div class="form-group flex-1">
-                    <label for="selectDailyAction">Aksi Jam Nonaktif</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">⚡</span>
-                      <select id="selectDailyAction" class="custom-input" disabled>
-                        <option value="nonaktif">Nonaktifkan Stok</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Baris 2: Pengaturan Jadwal Aktif Kembali (Baru) -->
-                <div class="form-row mt-2">
-                  <div class="form-group flex-1">
-                    <label for="inputDailyEnableTime">Jam Aktifkan Kembali (WIB)</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">🕒</span>
-                      <input type="time" id="inputDailyEnableTime" value="08:00" class="custom-input">
-                    </div>
-                  </div>
-
-                  <div class="form-group flex-1">
-                    <label for="selectDailyEnableAction">Aksi Jam Aktif</label>
-                    <div class="input-with-icon">
-                      <span class="field-icon">⚡</span>
-                      <select id="selectDailyEnableAction" class="custom-input" disabled>
-                        <option value="aktif">Aktifkan Kembali</option>
-                      </select>
-                    </div>
+                    <label for="selectDailyAction">Pilih Aksi</label>
+                    <select id="selectDailyAction" class="custom-input">
+                      <option value="nonaktif">Nonaktifkan Stok</option>
+                      <option value="aktif">Aktifkan Stok</option>
+                    </select>
                   </div>
                 </div>
 
                 <!-- Master MD Info & PLU Chips Preview -->
                 <div
-                  style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; font-size: 11.5px;">
+                  style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; margin-bottom: 8px; padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; font-size: 11.5px;">
                   <span style="color: #60a5fa; display: flex; align-items: center; gap: 5px;">
-                    <span>🏢</span> <strong>Tembakan EDP (tbtr_update_plu_md):</strong>
+                    <strong>Tembakan EDP (tbtr_update_plu_md):</strong>
                   </span>
-                  <button type="button" class="btn btn-xs btn-outline" id="btnFetchPluFromDb"
-                    style="padding: 2px 8px; font-size: 11px;">
-                    <span>📥</span> Tarik Master DB
+                  <button type="button" class="btn btn-xs btn-outline" id="btnFetchPluFromDb">
+                    Tarik Master DB
                   </button>
                 </div>
 
-                <div class="plu-chips-header mt-3">
+                <div class="plu-chips-header mt-2">
                   <span class="chips-title">Daftar PLU Target (Master + Manual):</span>
                   <span class="badge badge-primary" id="badgePluListCount">0 PLU</span>
                 </div>
@@ -287,13 +244,13 @@
 
                 <div class="action-buttons-row mt-2">
                   <button class="btn btn-outline btn-sm" id="btnOpenPluModal">
-                    <span>📝</span> Input / Edit PLU
+                    Input / Edit PLU
                   </button>
                   <button class="btn btn-primary btn-sm" id="btnSaveConfig">
-                    <span>💾</span> Simpan Pengaturan
+                    Simpan Pengaturan
                   </button>
                   <button class="btn btn-success btn-sm" id="btnRunManualDirect">
-                    <span>📋</span> Jalankan Nonaktifkan PLU Sekarang
+                    Jalankan Aksi PLU Sekarang
                   </button>
                 </div>
               </div>
@@ -308,13 +265,12 @@
             <div class="glass-card" id="cardQuerySection" style="height: 100%; display: flex; flex-direction: column;">
               <div class="card-header">
                 <div class="card-title-group">
-                  <span class="card-icon">📊</span>
                   <h2>Data Margin Minus dari Database (PostgreSQL)</h2>
                   <span class="badge badge-danger" id="badgeDbCount">0 Item</span>
                 </div>
                 <div class="header-actions">
                   <button class="btn btn-sm btn-outline" id="btnRunQueryPreview">
-                    <span>📊</span> Refresh Data DB
+                    Refresh Data DB
                   </button>
                 </div>
               </div>
@@ -337,7 +293,7 @@
                     </thead>
                     <tbody id="tableDbBody">
                       <tr class="empty-row">
-                        <td colspan="6">Klik <strong>"📊 Refresh Data DB"</strong> untuk memuat data margin minus.</td>
+                        <td colspan="6">Klik <strong>"Refresh Data DB"</strong> untuk memuat data margin minus.</td>
                       </tr>
                     </tbody>
                   </table>
@@ -356,7 +312,7 @@
               <span class="dot dot-yellow"></span>
               <span class="dot dot-green"></span>
               <span class="terminal-title">Terminal Log: CMS StokPoin (Margin Minus & PLU)</span>
-              <span id="stokpoinSseStatus" class="badge badge-success" style="font-size: 10px; margin-left: 8px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;">
+              <span id="stokpoinSseStatus" class="badge badge-success" style="font-size: 10px; margin-left: 6px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 4px;">
                 <span class="live-dot" style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
                 <span id="stokpoinSseText">Realtime SSE</span>
               </span>
@@ -375,508 +331,346 @@
       </section>
 
       <!-- ======================================================================
-           VIEW 2: OTOMASI WEB IAS (New Ready-to-Use Automation Module)
+           VIEW 2: OTOMASI WEB IAS (Streamlined, Realtime & Simple Dashboard)
            ====================================================================== -->
       <section class="admin-view" id="viewIAS">
-        <!-- 1. Top Unified Action Bar: Connection Status & Periode -->
-        <div class="glass-card mb-3" style="padding: 14px 20px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+        <!-- 1. Top Unified Header: Session Status & Periode -->
+        <div class="glass-card mb-3" style="padding: 12px 18px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <!-- Left: Connection Status Indicator -->
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="display: flex; flex-direction: column;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span id="cardIasSessionValue" style="font-weight: 700; font-size: 14px; color: #ef4444;">🔴
-                    BELUM LOGIN</span>
-                  <span class="badge badge-info" id="badgeIasKoneksi" style="font-size: 10px; padding: 2px 6px;">SIMULASI</span>
-                  <span class="badge badge-warning" id="badgeIasAutoLogin"
-                    style="font-size: 10px; padding: 2px 6px;">Perlu Login</span>
-                </div>
-                <span id="cardIasSessionDetail" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
-                  Sesi browser belum terhubung
-                </span>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span id="cardIasSessionValue" style="font-weight: 800; font-size: 13.5px; color: #ef4444;">BELUM LOGIN</span>
+                <span class="badge badge-info" id="badgeIasKoneksi">SIMULASI</span>
+                <span class="badge badge-warning" id="badgeIasAutoLogin">Perlu Login</span>
               </div>
-              <button type="button" class="btn btn-xs btn-success" id="btnTopBarIasLogin" style="margin-left: 8px; font-weight: 600;">
-                <span>🔑</span> Login IAS
+              <button type="button" class="btn btn-xs btn-success" id="btnTopBarIasLogin" style="font-weight: 600;">
+                Login IAS
               </button>
-              <button type="button" class="btn btn-xs btn-danger" id="btnTopBarIasLogout" style="margin-left: 8px; display: none; font-weight: 600;">
-                <span>🚪</span> Logout
+              <button type="button" class="btn btn-xs btn-danger" id="btnTopBarIasLogout" style="display: none; font-weight: 600;">
+                Logout
               </button>
-              <button type="button" class="btn btn-xs btn-outline" id="btnToggleIasConfig" style="margin-left: 4px;">
-                <span>⚙️</span> Pengaturan Akun
+              <button type="button" class="btn btn-xs btn-outline" id="btnToggleIasConfig" title="Pengaturan Akun & URL IAS">
+                Pengaturan
               </button>
             </div>
 
             <!-- Right: Inline Shared Period Control -->
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span
-                style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-                <span>📅</span> Periode:
-              </span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <input type="text" id="iasSharedPeriode1" class="custom-input" placeholder="DD/MM/YYYY"
-                  style="width: 115px; padding: 6px 10px; font-size: 12px; text-align: center;">
-                <span style="font-size: 12px; color: var(--text-dim);">s/d</span>
-                <input type="text" id="iasSharedPeriode2" class="custom-input" placeholder="DD/MM/YYYY"
-                  style="width: 115px; padding: 6px 10px; font-size: 12px; text-align: center;">
-              </div>
-              <div style="display: flex; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Periode:</span>
+              <input type="text" id="iasSharedPeriode1" class="custom-input" placeholder="DD/MM/YYYY" style="width: 105px; text-align: center;">
+              <span style="font-size: 12px; color: var(--text-dim);">s/d</span>
+              <input type="text" id="iasSharedPeriode2" class="custom-input" placeholder="DD/MM/YYYY" style="width: 105px; text-align: center;">
+              <div style="display: flex; gap: 4px;">
                 <button type="button" class="btn btn-xs btn-outline" id="btnQuickThisMonth">Bulan Ini</button>
                 <button type="button" class="btn btn-xs btn-outline" id="btnQuickPrevMonth">Bulan Lalu</button>
                 <button type="button" class="btn btn-xs btn-outline" id="btnQuickToday">Hari Ini</button>
               </div>
-              <button type="button" class="btn btn-xs btn-primary" id="btnRefreshAllIasStatus"
-                style="margin-left: 4px;">
-                <span>🔄</span> Cek Status
-              </button>
             </div>
           </div>
 
-          <!-- Collapsible Credentials Drawer (Hidden by default) -->
-          <div id="drawerIasConfig"
-            style="display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
-            <div class="form-row" style="gap: 12px; flex-wrap: wrap;">
-              <div class="form-group flex-1" style="min-width: 160px;">
-                <label for="inputIasUrl" style="font-size: 11px;">URL Web IAS</label>
-                <input type="text" id="inputIasUrl" placeholder="http://172.31.146.190" class="custom-input"
-                  style="font-size: 12px; padding: 6px 10px;">
-              </div>
+          <!-- Collapsible Credentials Drawer -->
+          <div id="drawerIasConfig" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <div class="form-row" style="gap: 10px; flex-wrap: wrap;">
               <div class="form-group flex-1" style="min-width: 150px;">
-                <label for="selectIasKoneksi" style="font-size: 11px;">Koneksi</label>
-                <select id="selectIasKoneksi" class="custom-input" style="font-size: 12px; padding: 6px 10px;">
+                <label for="inputIasUrl">URL Web IAS</label>
+                <input type="text" id="inputIasUrl" placeholder="http://172.31.146.190" class="custom-input">
+              </div>
+              <div class="form-group flex-1" style="min-width: 130px;">
+                <label for="selectIasKoneksi">Koneksi</label>
+                <select id="selectIasKoneksi" class="custom-input">
                   <option value="sim">SIMULASI (simspibdl1r)</option>
                   <option value="igr">PRODUCTION (spibdl1r)</option>
                 </select>
               </div>
-              <div class="form-group flex-1" style="min-width: 120px;">
-                <label for="inputIasUser" style="font-size: 11px;">Username</label>
-                <input type="text" id="inputIasUser" placeholder="Username IAS" class="custom-input"
-                  style="font-size: 12px; padding: 6px 10px;">
+              <div class="form-group flex-1" style="min-width: 110px;">
+                <label for="inputIasUser">Username</label>
+                <input type="text" id="inputIasUser" placeholder="Username IAS" class="custom-input">
               </div>
-              <div class="form-group flex-1" style="min-width: 120px;">
-                <label for="inputIasPassword" style="font-size: 11px;">Password</label>
-                <input type="password" id="inputIasPassword" placeholder="••••••" class="custom-input"
-                  style="font-size: 12px; padding: 6px 10px;">
+              <div class="form-group flex-1" style="min-width: 110px;">
+                <label for="inputIasPassword">Password</label>
+                <input type="password" id="inputIasPassword" placeholder="••••••" class="custom-input">
               </div>
-              <div class="form-group" style="display: flex; align-items: flex-end; gap: 8px;">
-                <button type="button" class="btn btn-sm btn-primary" id="btnSaveIasConfig" style="height: 34px;">
-                  <span>💾</span> Simpan
-                </button>
-                <button type="button" class="btn btn-sm btn-outline" id="btnTestIasLogin" style="height: 34px;">
-                  <span>🧪</span> Uji Login
-                </button>
+              <div class="form-group" style="display: flex; align-items: flex-end; gap: 6px;">
+                <button type="button" class="btn btn-sm btn-primary" id="btnSaveIasConfig">Simpan</button>
+                <button type="button" class="btn btn-sm btn-outline" id="btnTestIasLogin">Uji Login</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Alert Banner: Login Required & Menu Locked -->
-        <div id="iasLoginAlertBanner" style="display: none; background: rgba(239, 68, 68, 0.14); border: 1.5px solid #ef4444; border-radius: 10px; padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 14px;">
-            <span style="font-size: 28px;">🔒</span>
+        <!-- Alert Banner: Login Required -->
+        <div id="iasLoginAlertBanner" style="display: none; background: rgba(239, 68, 68, 0.12); border: 1.5px solid #ef4444; border-radius: 8px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
             <div>
-              <div style="font-weight: 700; font-size: 14px; color: #f87171;">Sesi Web IAS Belum Terhubung (Login Diperlukan)</div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">
-                Semua menu dan tombol aksi di bawah ini <strong>dikunci sementara</strong>. Silakan login ke Web IAS terlebih dahulu.
-              </div>
+              <div style="font-weight: 700; font-size: 13.5px; color: #f87171;">Web IAS Belum Login</div>
+              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 1px;">Silakan klik tombol Login untuk mengaktifkan seluruh aksi otomatisasi di bawah.</div>
             </div>
           </div>
-          <button type="button" class="btn btn-primary" id="btnManualIasLogin" style="height: 38px; padding: 0 18px; font-weight: 700; font-size: 12.5px;">
-            <span>🔑</span> Login ke Web IAS Sekarang
-          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnManualIasLogin">Login ke Web IAS Sekarang</button>
         </div>
 
-        <!-- Container for All IAS Task Modules (Locked if not logged in) -->
-        <div id="iasModulesContainer" class="ias-modules-container is-locked">
+        <!-- Container for All IAS Modules -->
+        <div id="iasModulesContainer" class="ias-modules-container">
 
-        <!-- 2. Main 2 Task Cards (Simple, Side by Side) -->
-        <div class="workspace-grid" style="margin-bottom: 16px;">
-          <!-- Card 1: Hitstok -->
-          <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div class="card-header" style="padding: 14px 18px;">
+          <!-- 2. Dual Task Cards: Hitstok & Proses LPP -->
+          <div class="workspace-grid" style="margin-bottom: 16px;">
+            <!-- Card 1: Hitstok -->
+            <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+              <div class="card-header">
                 <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
-                  <span class="card-icon" style="font-size: 18px;">📦</span>
-                  <h2 style="font-size: 15px; margin: 0;">Hitung Ulang Stock (Hitstok)</h2>
-                  <span class="badge badge-info" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">2x
-                    Putaran SOP</span>
+                  <h2 style="margin: 0;">Hitung Ulang Stock (Hitstok)</h2>
+                  <span class="badge badge-info">2x Putaran SOP</span>
                 </div>
-                <span class="task-badge-live task-badge-done" id="badgeHitstokStatus">
-                  <span>●</span> DONE
-                </span>
+                <span class="task-badge-live task-badge-done" id="badgeHitstokStatus">STANDBY</span>
               </div>
-              <div class="card-body" style="padding: 16px 18px;">
-                <p class="section-desc" style="font-size: 12px; margin-bottom: 12px;">
-                  Menjalankan hitung ulang stock di <code>/bo/proses/hitungulangstock</code> sebanyak 2 putaran sesuai
-                  SOP Indogrosir.
-                </p>
-
-                <!-- Filter PLU (Clean 1 Row) -->
-                <div class="form-row" style="gap: 10px; margin-bottom: 12px;">
-                  <div class="form-group flex-1">
-                    <label for="hitstokPlu1" style="font-size: 11px;">PLU Awal (Opsional)</label>
-                    <input type="text" id="hitstokPlu1" class="custom-input" placeholder="Kosongkan jika semua PLU"
-                      style="font-size: 12px; padding: 6px 10px;">
-                  </div>
-                  <div class="form-group flex-1">
-                    <label for="hitstokPlu2" style="font-size: 11px;">PLU Akhir (s/d Opsional)</label>
-                    <input type="text" id="hitstokPlu2" class="custom-input" placeholder="Kosongkan jika semua PLU"
-                      style="font-size: 12px; padding: 6px 10px;">
-                  </div>
+              <div class="card-body">
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                  <span style="color: var(--text-dim);">Terakhir Dijalankan:</span>
+                  <span id="hitstokLastRunTime" style="font-weight: 600;">-</span>
                 </div>
-
-                <div
-                  style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg-card-header); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px;">
-                  <span style="font-size: 11.5px; font-weight: 500;">Update Online Stock SPI setelah hitstok</span>
-                  <input type="checkbox" id="checkHitstokOnlineStock" class="custom-toggle" checked>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                  <span style="color: var(--text-dim);">Status Eksekusi:</span>
+                  <span id="hitstokLastStatus" style="font-weight: 700; color: var(--success);">-</span>
                 </div>
-
-                <!-- Info Ringkas Eksekusi Terakhir -->
-                <div
-                  style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; font-size: 11.5px;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: var(--text-dim);">Terakhir Dijalankan:</span>
-                    <span id="hitstokLastRunTime" style="font-weight: 600;">-</span>
+                <details style="font-size: 11.5px; color: var(--text-muted);">
+                  <summary style="cursor: pointer; color: var(--primary); font-weight: 600;">Filter Range PLU & Opsi</summary>
+                  <div class="form-row mt-2" style="gap: 8px;">
+                    <input type="text" id="hitstokPlu1" class="custom-input" placeholder="PLU Awal">
+                    <input type="text" id="hitstokPlu2" class="custom-input" placeholder="PLU Akhir">
                   </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: var(--text-dim);">Status Terakhir:</span>
-                    <span id="hitstokLastStatus" style="font-weight: 700; color: var(--success);">-</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-dim);">Filter Range PLU:</span>
-                    <span id="hitstokLastPluRange" style="color: var(--text-muted);">SEMUA PLU</span>
-                  </div>
-                </div>
+                  <label class="checkbox-label mt-2">
+                    <input type="checkbox" id="checkHitstokOnlineStock" checked>
+                    <span class="chk-custom"></span>
+                    <span>Update Online Stock SPI setelah hitstok</span>
+                  </label>
+                </details>
+                <button class="btn btn-primary btn-block" id="btnRunHitstok" style="font-weight: 700;">
+                  Jalankan Hitstok (2x Putaran)
+                </button>
               </div>
             </div>
 
-            <!-- Action Button -->
-            <div style="padding: 14px 18px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
-              <button class="btn btn-primary" id="btnRunHitstok"
-                style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
-                <span>⚡</span> Jalankan Hitstok (2x Putaran)
-              </button>
-              <button class="btn btn-outline" id="btnCheckHitstokStatus" style="height: 38px; padding: 0 14px;"
-                title="Periksa Status Terkini">
-                <span>🔄</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Card 2: LPP Bulanan -->
-          <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div class="card-header" style="padding: 14px 18px;">
+            <!-- Card 2: Proses LPP -->
+            <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+              <div class="card-header">
                 <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
-                  <span class="card-icon" style="font-size: 18px;">📑</span>
-                  <h2 style="font-size: 15px; margin: 0;">Proses LPP (Bulanan)</h2>
-                  <span class="badge badge-info" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">2x
-                    Putaran SOP</span>
+                  <h2 style="margin: 0;">Proses LPP (Bulanan)</h2>
+                  <span class="badge badge-info">2x Putaran SOP</span>
                 </div>
-                <span class="task-badge-live task-badge-done" id="badgeLppStatus">
-                  <span>●</span> DONE
-                </span>
+                <span class="task-badge-live task-badge-done" id="badgeLppStatus">STANDBY</span>
               </div>
-              <div class="card-body" style="padding: 16px 18px;">
-                <p class="section-desc" style="font-size: 12px; margin-bottom: 12px;">
-                  Menjalankan proses LPP Bulanan di <code>/bo/lpp/proses-lpp</code> sebanyak 2 putaran sesuai SOP
-                  Indogrosir.
-                </p>
-
-                <!-- Highlight Periode Aktif Target -->
-                <div
-                  style="padding: 12px 14px; background: rgba(37, 99, 235, 0.07); border: 1px solid rgba(37, 99, 235, 0.22); border-radius: 8px; margin-bottom: 16px;">
-                  <div style="font-size: 11px; color: var(--text-dim);">Target Periode LPP Aktif:</div>
-                  <div id="textLppActivePeriod"
-                    style="font-size: 14px; font-weight: 700; color: var(--primary); margin-top: 3px;">
-                    01/09/2026 s/d 01/09/2026
-                  </div>
+              <div class="card-body">
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                  <span style="color: var(--text-dim);">Target Periode:</span>
+                  <span id="textLppActivePeriod" style="font-weight: 700; color: var(--primary);">01/09/2026 s/d 30/09/2026</span>
                 </div>
-
-                <!-- Info Ringkas Eksekusi Terakhir -->
-                <div
-                  style="padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; font-size: 11.5px;">
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: var(--text-dim);">Terakhir Dijalankan:</span>
-                    <span id="lppLastRunTime" style="font-weight: 600;">-</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: var(--text-dim);">Status Terakhir:</span>
-                    <span id="lppLastStatus" style="font-weight: 700; color: var(--success);">-</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="color: var(--text-dim);">Start / Finish Time:</span>
-                    <span id="lppLastTimeWindow" style="color: var(--text-muted);">-</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-dim);">Mode:</span>
-                    <span id="lppLastMode" style="color: var(--text-muted);">Bulanan</span>
-                  </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                  <span style="color: var(--text-dim);">Terakhir Dijalankan:</span>
+                  <span id="lppLastRunTime" style="font-weight: 600;">-</span>
                 </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px;">
+                  <span style="color: var(--text-dim);">Status Eksekusi:</span>
+                  <span id="lppLastStatus" style="font-weight: 700; color: var(--success);">-</span>
+                </div>
+                <button class="btn btn-primary btn-block" id="btnRunLpp" style="font-weight: 700;">
+                  Jalankan Proses LPP (2x Putaran)
+                </button>
               </div>
-            </div>
-
-            <!-- Action Button -->
-            <div style="padding: 14px 18px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
-              <button class="btn btn-primary" id="btnRunLpp"
-                style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
-                <span>⚡</span> Jalankan Proses LPP (2x Putaran)
-              </button>
-              <button class="btn btn-outline" id="btnCheckLppStatus" style="height: 38px; padding: 0 14px;"
-                title="Periksa Status Terkini">
-                <span>🔄</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Task Card 3: Cetak Register LPP (Data Pembanding) -->
-        <div class="glass-card mb-3" style="border: 1px solid rgba(59, 130, 246, 0.25);">
-          <div class="card-header"
-            style="padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-            <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
-              <span class="card-icon" style="font-size: 18px;">📊</span>
-              <h2 style="font-size: 15px; margin: 0;">Cetak Register LPP (Data Pembanding Persediaan)</h2>
-              <span class="badge badge-primary" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">18 Kolom
-                Ekstraksi</span>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <button class="btn btn-outline btn-sm" id="btnOpenLppModal"
-                style="font-size: 12px; height: 32px; display: none;">
-                <span>🔍</span> Lihat Tabel Pembanding
-              </button>
-              <a href="/api/ias/register-lpp/export-csv" class="btn btn-outline btn-sm" id="btnExportLppCsv"
-                style="font-size: 12px; height: 32px; text-decoration: none; display: none;" download>
-                <span>📥</span> Unduh CSV
-              </a>
-              <span class="task-badge-live task-badge-waiting" id="badgeRegisterLppStatus">
-                <span>●</span> STANDBY
-              </span>
             </div>
           </div>
 
-          <div class="card-body" style="padding: 16px 18px;">
-            <p class="section-desc" style="font-size: 12px; margin-bottom: 14px;">
-              Mengambil laporan Register LPP dari <code>/bo/lpp/register-lpp/cetak</code> untuk periode aktif dan
-              mengekstrak seluruh nilai kolom (Saldo Awal, Pembelian, Penerimaan, Pengeluaran, SO, Penyesuaian, Koreksi,
-              Saldo Akhir) sebagai data pembanding.
-            </p>
-
-            <div
-              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
-              <!-- Stat 1: Saldo Awal -->
-              <div
-                style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-dim);">Saldo Awal (Grand Total)</div>
-                <div id="statLppSaldoAwalRp"
-                  style="font-size: 15px; font-weight: 700; color: var(--text-main); margin-top: 4px;">Rp -</div>
-                <div id="statLppSaldoAwalQty" style="font-size: 11px; color: var(--primary); margin-top: 2px;">Qty: -
+          <!-- 3. SMART KROSCEK DASHBOARD (Simplified & Realtime) -->
+          <div class="glass-card mb-3" style="border: 1px solid rgba(16, 185, 129, 0.3);">
+            <div class="card-header" style="padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
+                <div>
+                  <h2 style="font-size: 14px; margin: 0;">Kroscek Validasi Persediaan (SOP Month-End)</h2>
+                  <p class="section-desc" style="font-size: 11.5px; margin: 2px 0 0 0;">Validasi otomatis Register LPP 01 terhadap seluruh laporan operasional.</p>
                 </div>
               </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <!-- Hero 1-Click Action -->
+                <button type="button" class="ias-hero-btn" id="btnAutoSyncAllKroscek">
+                  Auto-Tarik & Kroscek Semua Data
+                </button>
 
-              <!-- Stat 2: Pembelian -->
-              <div
-                style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-dim);">Pembelian (Murni + Bonus)</div>
-                <div id="statLppPembelian"
-                  style="font-size: 15px; font-weight: 700; color: var(--success); margin-top: 4px;">Rp -</div>
-                <div id="statLppPenerimaanLain" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
-                  Penerimaan Lain: -</div>
-              </div>
+                <!-- Export CSV -->
+                <a href="/api/ias/kroscek/export-csv" class="btn btn-sm btn-outline" id="btnExportKroscekCsv" download style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                  Export CSV
+                </a>
 
-              <!-- Stat 3: Penjualan & Pengeluaran -->
-              <div
-                style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-dim);">Penjualan</div>
-                <div id="statLppPenjualan"
-                  style="font-size: 15px; font-weight: 700; color: var(--warning); margin-top: 4px;">Rp -</div>
-                <div id="statLppPengeluaranLain" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
-                  Pengeluaran Lain / SO: -</div>
-              </div>
-
-              <!-- Stat 4: Saldo Akhir -->
-              <div
-                style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--text-dim);">Saldo Akhir (Grand Total)</div>
-                <div id="statLppSaldoAkhirRp"
-                  style="font-size: 15px; font-weight: 700; color: var(--primary); margin-top: 4px;">Rp -</div>
-                <div id="statLppSaldoAkhirQty" style="font-size: 11px; color: var(--primary); margin-top: 2px;">Qty: -
+                <!-- Opsi Manual Dropdown -->
+                <div class="ias-dropdown" id="iasManualDropdown">
+                  <button type="button" class="btn btn-sm btn-ghost" id="btnToggleManualDropdown">
+                    Opsi Manual ▾
+                  </button>
+                  <div class="ias-dropdown-menu">
+                    <button type="button" class="ias-dropdown-item" id="btnFetchRegisterLpp">Tarik LPP 01 (Baik)</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchPrevLpp">Tarik LPP Bulan Lalu</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchNextLpp">Tarik LPP Bulan Baru (Setelah ME)</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchDaftarPembelian">Tarik Daftar Pembelian</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchLaporanPenjualan">Tarik Lap. Penjualan Kasir</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchLpp02">Tarik LPP 02 (Retur)</button>
+                    <button type="button" class="ias-dropdown-item" id="btnFetchLpp03">Tarik LPP 03 (Rusak)</button>
+                    <button type="button" class="ias-dropdown-item" id="btnSyncKroscekLpp01">Sinkron Grand Total LPP 01</button>
+                    <button type="button" class="ias-dropdown-item" id="btnSaveKroscek">Simpan Lembar Kroscek</button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Action Bar -->
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <select id="selectRegisterLppMenu" class="form-control" style="width: 230px; height: 38px; font-size: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 0 10px;">
-                <option value="LPP01" selected>1. LPP 01 (Baik Ringkasan Divisi)</option>
-                <option value="LPP08">8. LPP 02 (Retur Ringkasan Divisi)</option>
-                <option value="LPP10">10. LPP 03 (Rusak Ringkasan Divisi)</option>
-              </select>
-              <button class="btn btn-primary" id="btnFetchRegisterLpp"
-                style="flex: 1; height: 38px; font-size: 13px; font-weight: 600;">
-                <span>⚡</span> Cetak & Ambil Data Pembanding
-              </button>
-              <button class="btn btn-outline" id="btnCheckRegisterLppLatest"
-                style="height: 38px; padding: 0 16px; font-size: 12px;" title="Muat Ulang Data Terakhir">
-                <span>🔄</span> Muat Data Terakhir
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. Task Card 4: Template Kroscek Data Laporan LPP (Posisi & Mutasi Persediaan) -->
-        <div class="glass-card mb-3" style="border: 1px solid rgba(16, 185, 129, 0.25);">
-          <div class="card-header"
-            style="padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-            <div class="card-title-group" style="display: flex; align-items: center; gap: 8px;">
-              <span class="card-icon" style="font-size: 18px;">📋</span>
-              <h2 style="font-size: 15px; margin: 0;">Kroscek Data Laporan LPP (Posisi & Mutasi Persediaan)</h2>
-              <span class="badge badge-success" style="font-size: 10px; padding: 2px 7px; border-radius: 4px;">SOP
-                Month-End (ME)</span>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchPrevLpp"
-                title="Tarik Saldo Akhir LPP 01, 02, 03 Bulan Sebelumnya (Agustus) dari Web IAS">
-                <span>📅</span> LPP Bulan Lalu
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchNextLpp"
-                title="Tarik Saldo Awal LPP 01, 02, 03 Bulan Baru (Oktober) setelah proses ME dari Web IAS">
-                <span>⏭️</span> LPP Bulan Baru (Setelah ME)
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchDaftarPembelian"
-                title="Tarik Laporan Daftar Pembelian dari Web IAS (Gross - Potongan + Disc4)">
-                <span>🛍️</span> Dftr Pembelian
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchLaporanPenjualan"
-                title="Tarik Laporan Penjualan (HPP Rata2) dari FO Web IAS">
-                <span>📈</span> Lap. Penjualan
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchLpp02"
-                title="Tarik Data LPP 02 (Retur / LPP08) dari Web IAS untuk Kroscek Antar LPP">
-                <span>📑</span> LPP 02 (Retur)
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnFetchLpp03"
-                title="Tarik Data LPP 03 (Rusak / LPP10) dari Web IAS untuk Kroscek Antar LPP">
-                <span>📑</span> LPP 03 (Rusak)
-              </button>
-              <button type="button" class="btn btn-sm btn-outline" id="btnSyncKroscekLpp01"
-                title="Tarik Grand Total LPP 01 otomatis ke kolom hijau">
-                <span>🔄</span> Sinkron LPP 01
-              </button>
-              <button type="button" class="btn btn-sm btn-primary" id="btnSaveKroscek">
-                <span>💾</span> Simpan Kroscek
-              </button>
-              <a href="/api/ias/kroscek/export-csv" class="btn btn-sm btn-outline" id="btnExportKroscekCsv" download
-                style="text-decoration: none; display: flex; align-items: center; gap: 4px;">
-                <span>📥</span> Unduh CSV
-              </a>
-            </div>
-          </div>
-
-          <div class="card-body" style="padding: 16px 18px;">
-            <p class="section-desc" style="font-size: 12px; margin-bottom: 14px;">
-              Kroscek validasi data persediaan antara <strong>Register LPP 01</strong> dengan <strong>Laporan Lawan (IAS
-                BO & FO)</strong>. Nilai kolom hijau terisi otomatis dari Grand Total LPP 01. Masukkan nilai laporan
-              lawan untuk menghitung selisih otomatis.
-            </p>
-
-            <!-- Tabel Kroscek Utama 18 Baris -->
-            <div
-              style="overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 16px;">
-              <table class="db-table" id="tableKroscekMain"
-                style="font-size: 11.5px; width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr style="background: #111827;">
-                    <th style="padding: 8px 12px; text-align: left; width: 220px; background: #3b2d18; color: #fef08a;">
-                      REGISTER LPP</th>
-                    <th
-                      style="padding: 8px 12px; text-align: right; width: 150px; background: #064e3b; color: #86efac;">
-                      DATA LPP 01</th>
-                    <th style="padding: 8px 12px; text-align: left; background: #164e63; color: #a5f3fc;">KROSCEK DATA
-                      LAPORAN</th>
-                    <th
-                      style="padding: 8px 12px; text-align: right; width: 170px; background: #164e63; color: #a5f3fc;">
-                      NILAI PEMBANDING</th>
-                    <th
-                      style="padding: 8px 12px; text-align: right; width: 140px; background: #7f1d1d; color: #fecaca;">
-                      SELISIH</th>
-                    <th style="padding: 8px 12px; text-align: left; width: 260px; background: #374151; color: #f3f4f6;">
-                      ATURAN & SUMBER IAS</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyKroscekMain">
-                  <!-- Generated by JS -->
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Bagian Bawah: Kroscek Antar Bulan & Antar LPP + Banner Tidak Boleh Ada Selisih -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px;">
-              <!-- Tabel Komparasi Antar LPP -->
-              <div
-                style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.15);">
-                <div
-                  style="padding: 10px 14px; background: #1e293b; font-size: 12px; font-weight: 700; color: #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-                  <span>Kroscek Antar Bulan & Antar LPP</span>
-                  <span class="badge badge-info" style="font-size: 10px;">LPP-01, 02, 03</span>
+            <div class="card-body" style="padding: 14px 18px;">
+              <!-- Realtime Progress Bar (Active when syncing) -->
+              <div id="iasProgressBox" class="ias-progress-box" style="display: none;">
+                <div class="ias-progress-header">
+                  <span id="iasProgressTitle" style="color: var(--primary);">Menjalankan sinkronisasi data...</span>
+                  <span id="iasProgressPercent" style="color: var(--text-main); font-weight: 700;">0%</span>
                 </div>
-                <div style="padding: 10px; overflow-x: auto;">
-                  <table class="db-table" style="font-size: 11px; width: 100%;">
+                <div class="ias-progress-track">
+                  <div id="iasProgressFill" class="ias-progress-fill"></div>
+                </div>
+              </div>
+
+              <!-- Sub-Tabs Navigation -->
+              <div class="ias-sub-tabs">
+                <button type="button" class="ias-tab-item active" data-tab="tabKroscekMutasi">
+                  1. Tabel Mutasi (18 Baris Lawan)
+                </button>
+                <button type="button" class="ias-tab-item" data-tab="tabKroscekAntarLpp">
+                  2. Kroscek Antar LPP & Bulan
+                </button>
+                <button type="button" class="ias-tab-item" data-tab="tabKroscekRegisterLpp">
+                  3. Rincian Register LPP
+                </button>
+              </div>
+
+              <!-- TAB 1: Tabel Mutasi 18 Baris -->
+              <div class="ias-tab-pane active" id="tabKroscekMutasi">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;">
+                  <input type="text" id="inputFilterKroscek" class="custom-input" placeholder="Cari baris mutasi..." style="max-width: 260px;">
+                  <small style="color: var(--text-dim); font-size: 11px;">* Kolom hijau terisi otomatis dari LPP 01. Nilai pembanding dihitung selisihnya secara realtime.</small>
+                </div>
+                <div class="excel-table-container">
+                  <table class="excel-kroscek-table" id="tableKroscekMain">
                     <thead>
-                      <tr style="background: rgba(255,255,255,0.03);">
-                        <th style="padding: 6px 8px; text-align: left;">KOMPARASI</th>
-                        <th style="padding: 6px 8px; text-align: right; width: 110px;">NILAI 1</th>
-                        <th style="padding: 6px 8px; text-align: right; width: 110px;">NILAI 2</th>
-                        <th style="padding: 6px 8px; text-align: right; width: 90px;">SELISIH</th>
+                      <tr>
+                        <th style="width: 200px; text-align: center;">REGISTER LPP</th>
+                        <th style="width: 125px; text-align: center;"></th>
+                        <th style="width: 380px; text-align: center;">KROSCEK DATA LAPORAN</th>
+                        <th style="width: 115px; text-align: center;">NILAI</th>
+                        <th class="th-selisih" style="width: 75px; text-align: center;">SELISIH</th>
+                        <th style="width: 360px; text-align: left; background: #ffff00; color: #000000; border: 1px solid #7f7f7f;"></th>
                       </tr>
                     </thead>
-                    <tbody id="tbodyAntarLpp">
-                      <!-- Generated by JS -->
+                    <tbody id="tbodyKroscekMain"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- TAB 2: Kroscek Antar LPP -->
+              <div class="ias-tab-pane" id="tabKroscekAntarLpp">
+                <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.15);">
+                  <div style="padding: 10px 14px; background: #1e293b; font-size: 12px; font-weight: 700; color: #f1f5f9;">
+                    Validasi Saldo Antar LPP-01, LPP-02 (Retur), dan LPP-03 (Rusak)
+                  </div>
+                  <div style="padding: 10px; overflow-x: auto;">
+                    <table class="db-table" style="width: 100%;">
+                      <thead>
+                        <tr style="background: rgba(255,255,255,0.03);">
+                          <th style="text-align: left;">KOMPARASI</th>
+                          <th style="text-align: right; width: 140px;">NILAI 1</th>
+                          <th style="text-align: right; width: 140px;">NILAI 2</th>
+                          <th style="text-align: right; width: 120px;">SELISIH</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tbodyAntarLpp"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 3: Rincian Register LPP -->
+              <div class="ias-tab-pane" id="tabKroscekRegisterLpp">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;">
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="inputFilterLppTableInline" class="custom-input" placeholder="Cari Kategori..." style="width: 200px;">
+                    <select id="selectFilterLppDivisiInline" class="custom-input" style="width: 140px;">
+                      <option value="">Semua Divisi</option>
+                      <option value="FOOD">1 - FOOD</option>
+                      <option value="NON FOOD">2 - NON FOOD</option>
+                      <option value="GENERAL">3 - GENERAL</option>
+                    </select>
+                  </div>
+                  <a href="/api/ias/register-lpp/export-csv" class="btn btn-xs btn-outline" download>Unduh CSV Lengkap</a>
+                </div>
+                <div style="overflow-x: auto; width: 100%; border: 1px solid var(--border-color); border-radius: 8px; max-height: 360px;">
+                  <table class="db-table" id="tableLppDetailInline" style="white-space: nowrap; width: 100%; border-collapse: collapse;">
+                    <thead>
+                      <tr style="position: sticky; top: 0; z-index: 5; background: var(--bg-card-header);">
+                        <th>DIVISI</th>
+                        <th>KODE</th>
+                        <th>NAMA KATEGORI</th>
+                        <th style="text-align: right;">SALDO AWAL (RP)</th>
+                        <th style="text-align: right;">PEMBELIAN</th>
+                        <th style="text-align: right;">PENJUALAN</th>
+                        <th style="text-align: right;">SALDO AKHIR (RP)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyLppDetailInline">
+                      <tr class="empty-row"><td colspan="7" style="text-align: center; padding: 18px;">Data belum ditarik. Klik "Auto-Tarik & Kroscek" untuk memuat.</td></tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <!-- Banner TIDAK BOLEH ADA SELISIH -->
-              <div id="bannerTidakBolehSelisih"
-                style="padding: 20px; border-radius: 8px; background: linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.05)); border: 2px dashed #f97316; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <div style="font-size: 28px; margin-bottom: 6px;">⚡</div>
-                <h3
-                  style="font-size: 18px; font-weight: 800; color: #ea580c; margin: 0 0 6px 0; letter-spacing: 0.5px;">
-                  TIDAK BOLEH ADA SELISIH</h3>
-                <p style="font-size: 12px; color: var(--text-muted); max-width: 320px; margin: 0 0 12px 0;">
-                  Seluruh mutasi dan saldo akhir pada laporan LPP wajib klop 100% dengan laporan operasional kasir,
-                  penerimaan, dan pengeluaran.
-                </p>
-                <div id="statusKroscekSummary"
-                  style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4);">
-                  <span>●</span> SEMUA SESUAI (0 SELISIH)
-                </div>
-              </div>
             </div>
-
           </div>
-        </div>
 
-        <!-- Hidden container for backwards-compatible elements -->
-        <div style="display: none;">
-          <div id="cardHitstokStatus"></div>
-          <div id="cardHitstokDetail"></div>
-          <div id="cardLppStatus"></div>
-          <div id="cardLppDetail"></div>
-          <div id="cardIasLastRefresh"></div>
-          <div id="badgeIasQueueCount"></div>
-          <table id="tableIasBody"></table>
-        </div>
+          <!-- Hidden backwards-compatible compatibility containers -->
+          <div style="display: none;">
+            <div id="statLppSaldoAwalRp"></div>
+            <div id="statLppSaldoAwalQty"></div>
+            <div id="statLppPembelian"></div>
+            <div id="statLppPenerimaanLain"></div>
+            <div id="statLppPenjualan"></div>
+            <div id="statLppPengeluaranLain"></div>
+            <div id="statLppSaldoAkhirRp"></div>
+            <div id="statLppSaldoAkhirQty"></div>
+            <div id="badgeRegisterLppStatus"></div>
+            <div id="btnCheckRegisterLppLatest"></div>
+            <div id="btnOpenLppModal"></div>
+            <div id="btnExportLppCsv"></div>
+            <div id="selectRegisterLppMenu"></div>
+            <div id="bannerTidakBolehSelisih"></div>
+            <div id="statusKroscekSummary"></div>
+            <div id="cardHitstokStatus"></div>
+            <div id="cardHitstokDetail"></div>
+            <div id="cardLppStatus"></div>
+            <div id="cardLppDetail"></div>
+            <div id="cardIasLastRefresh"></div>
+            <div id="badgeIasQueueCount"></div>
+            <table id="tableIasBody"></table>
+            <div id="cardIasSessionDetail"></div>
+            <button id="btnRefreshAllIasStatus"></button>
+            <button id="btnCheckHitstokStatus"></button>
+            <button id="btnCheckLppStatus"></button>
+            <div id="hitstokLastPluRange"></div>
+            <div id="lppLastTimeWindow"></div>
+            <div id="lppLastMode"></div>
+            <table id="tableLppDetail"><tbody id="tbodyLppDetail"></tbody></table>
+          </div>
+
         </div> <!-- /iasModulesContainer -->
 
-        <!-- Bottom Full-Width Section: IAS Activity Logs -->
+        <!-- 4. Terminal Console: Realtime Log Stream -->
         <div class="glass-card terminal-card mt-3">
           <div class="card-header terminal-header">
             <div class="terminal-dots">
               <span class="dot dot-red"></span>
               <span class="dot dot-yellow"></span>
               <span class="dot dot-green"></span>
-              <span class="terminal-title">Terminal Log: Otomasi Web IAS (Hitstok & LPP)</span>
+              <span class="terminal-title">Terminal Log: Otomasi Web IAS (Realtime)</span>
               <span id="iasSseStatus" class="badge badge-success" style="font-size: 10px; margin-left: 8px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;">
                 <span class="live-dot" style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
                 <span id="iasSseText">Realtime SSE</span>
@@ -889,7 +683,7 @@
           <div class="terminal-body" id="logIasConsole">
             <div class="log-line info">
               <span class="log-time">[--:--:--]</span>
-              <span class="log-msg">Modul Otomasi Web IAS siap menerima instruksi dan integrasi script baru.</span>
+              <span class="log-msg">Modul Otomasi Web IAS siap menerima instruksi.</span>
             </div>
           </div>
         </div>
@@ -903,7 +697,6 @@
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-icon">📦</span>
           <div>
             <h3>Input / Kelola Daftar PLU Manual</h3>
             <p class="modal-sub">Masukkan nomor PLU (1 nomor per baris atau dipisah koma)</p>
@@ -916,10 +709,10 @@
           <span class="badge badge-info" id="modalPluCounter">0 PLU Terdeteksi</span>
           <div class="toolbar-btns">
             <button type="button" class="btn btn-xs btn-outline" id="btnModalFetchDbPlu">
-              <span>📥</span> Ambil Master DB
+              Ambil Master DB
             </button>
             <label class="btn btn-xs btn-outline file-input-label">
-              <span>📁</span> Import .txt
+              Import .txt
               <input type="file" id="modalFileInput" accept=".txt,.csv" style="display:none;">
             </label>
             <button class="btn btn-xs btn-ghost" id="btnModalClear">Kosongkan</button>
@@ -931,7 +724,7 @@
       <div class="modal-footer">
         <button class="btn btn-sm btn-secondary" id="btnCancelPluModal">Batal</button>
         <button class="btn btn-sm btn-primary" id="btnSavePluModal">
-          <span>💾</span> Simpan & Terapkan
+          Simpan & Terapkan
         </button>
       </div>
     </div>
@@ -942,7 +735,6 @@
     <div class="modal-card modal-card-md">
       <div class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-icon">🐘</span>
           <div>
             <h3>Konfigurasi Database PostgreSQL</h3>
             <p class="modal-sub">Pengaturan koneksi untuk mengeksekusi query margin minus</p>
@@ -999,11 +791,11 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-sm btn-outline" id="btnTestDbConnection">
-          <span>🔌</span> Tes Koneksi
+          Tes Koneksi
         </button>
         <button class="btn btn-sm btn-secondary" id="btnCancelDbModal">Batal</button>
         <button class="btn btn-sm btn-primary" id="btnSaveDbModal">
-          <span>💾</span> Simpan Konfigurasi DB
+          Simpan Konfigurasi DB
         </button>
       </div>
     </div>
@@ -1014,7 +806,6 @@
     <div class="modal-card modal-card-sm">
       <div class="modal-header">
         <div class="modal-title-group">
-          <span class="modal-icon" id="confirmModalIcon">⚠️</span>
           <div>
             <h3 id="confirmModalTitle">Konfirmasi Tindakan</h3>
           </div>
@@ -1037,7 +828,6 @@
       style="max-width: 96vw; width: 1440px; max-height: 92vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="padding: 14px 20px;">
         <div class="modal-title-group">
-          <span class="modal-icon">📊</span>
           <div>
             <h3 id="lppModalTitle" style="font-size: 16px;">Data Pembanding: Register LPP (Posisi & Mutasi Persediaan)
             </h3>
@@ -1053,7 +843,7 @@
         style="padding: 10px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: rgba(0,0,0,0.15);">
         <div style="display: flex; gap: 10px; align-items: center; flex: 1; min-width: 280px;">
           <input type="text" id="inputFilterLppTable" class="custom-input"
-            placeholder="🔍 Cari Kode, Kategori, atau Departemen..."
+            placeholder="Cari Kode, Kategori, atau Departemen..."
             style="height: 34px; font-size: 12px; max-width: 320px;">
           <select id="selectFilterLppDivisi" class="custom-input" style="height: 34px; font-size: 12px; width: 180px;">
             <option value="">Semua Divisi</option>
@@ -1066,7 +856,7 @@
         <div style="display: flex; gap: 8px;">
           <a href="/api/ias/register-lpp/export-csv" class="btn btn-sm btn-outline" download
             style="text-decoration: none; display: flex; align-items: center; gap: 4px;">
-            <span>📥</span> Unduh CSV
+            Unduh CSV
           </a>
           <button class="btn btn-sm btn-secondary" id="btnCloseLppModalBtn">Tutup</button>
         </div>

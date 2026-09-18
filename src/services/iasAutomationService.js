@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
-const { addIasLog: addLog } = require('../utils/logger');
+const { addIasLog: addLog, logEmitter } = require('../utils/logger');
 
 class IasAutomationService {
   constructor() {
@@ -251,22 +251,26 @@ class IasAutomationService {
       const cookies = await session.context.cookies();
 
       addLog('success', `[IAS] ✅ Berhasil login ke Web IAS! Sesi browser dipertahankan aktif.`);
+      const sessionInfo = this.getSessionStatus();
+      logEmitter.emit('ias-session-update', sessionInfo);
       return {
         success: true,
         url: currentUrl,
         title: title,
         cookies: cookies,
         message: `Berhasil terhubung dan login ke Web IAS (${(session.config.koneksi || '').toUpperCase()} - ${session.config.username})`,
-        session: this.sessionState
+        session: sessionInfo
       };
     } catch (err) {
       this.sessionState.isConnected = false;
       this.sessionState.status = 'ERROR';
+      const sessionInfo = this.getSessionStatus();
+      logEmitter.emit('ias-session-update', sessionInfo);
       addLog('error', `[IAS] ❌ Login gagal: ${err.message}`);
       return {
         success: false,
         error: err.message,
-        session: this.sessionState
+        session: sessionInfo
       };
     }
   }
@@ -290,6 +294,7 @@ class IasAutomationService {
         koneksi: null,
         url: null
       };
+      logEmitter.emit('ias-session-update', this.getSessionStatus());
       addLog('info', `[IAS] 🚪 Sesi Web IAS telah diputuskan (Logout).`);
       return { success: true };
     }
@@ -797,10 +802,13 @@ class IasAutomationService {
    * URL format: /bo/lpp/register-lpp/cetak?menu=LPP01&export_type=pdf&periode1=...&periode2=...&tipe=3
    */
   async fetchAndParseRegisterLPP(opts = {}) {
-    if (this.activeTask) {
+    const isParentAutoSync = this.activeTask === 'AUTO_KROSCEK_ALL';
+    if (this.activeTask && !isParentAutoSync) {
       throw new Error(`Tugas lain (${this.activeTask}) sedang berjalan di Web IAS.`);
     }
-    this.activeTask = 'Register LPP (Data Pembanding)';
+    if (!isParentAutoSync) {
+      this.activeTask = 'Register LPP (Data Pembanding)';
+    }
 
     let session = null;
     try {
@@ -1144,6 +1152,7 @@ class IasAutomationService {
         const sa = parseNum(grandTotal?.saldoAwal?.rp || grandTotal?.saldoAwal);
         const sak = parseNum(grandTotal?.saldoAkhir?.rp || grandTotal?.saldoAkhir);
         const pb = parseNum(grandTotal?.penerimaanBaik);
+        const plb = parseNum(grandTotal?.pengeluaranLainBaik);
 
         if (isPastMonth) {
           kData.antarLpp.lpp02_prev = sak;
@@ -1153,9 +1162,11 @@ class IasAutomationService {
           kData.antarLpp.lpp02_me_awal = sa;
           kData.antarLpp.lpp02_me_akhir = sak;
           kData.lpp02_penerimaanBaik = pb;
-          kData.pembanding.pengeluaranLain = pb + (kData.lpp03_penerimaanBaik || 0); // BA Retur IDM = 0
+          kData.lpp02_pengeluaranLainBaik = plb;
+          kData.pembanding.penerimaanLain = plb + (kData.lpp03_pengeluaranLainBaik || 0);
+          kData.pembanding.pengeluaranLain = pb + (kData.lpp03_penerimaanBaik || 0) + (kData.baReturIdm || 0);
           this.saveKroscekData(kData);
-          addLog('success', `[IAS] 🔄 Sinkronisasi nilai LPP 02 (Retur) ke Kroscek Antar LPP & Pengeluaran Lain Pembanding (Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}) berhasil!`);
+          addLog('success', `[IAS] 🔄 Sinkronisasi LPP 02 (Retur) -> Penerimaan Lain: Rp ${kData.pembanding.penerimaanLain.toLocaleString('id-ID')} | Pengeluaran Lain: Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')} berhasil!`);
         }
       } else if (menu === 'LPP10') {
         const kData = this.getKroscekData();
@@ -1163,6 +1174,7 @@ class IasAutomationService {
         const sa = parseNum(grandTotal?.saldoAwal?.rp || grandTotal?.saldoAwal);
         const sak = parseNum(grandTotal?.saldoAkhir?.rp || grandTotal?.saldoAkhir);
         const pb = parseNum(grandTotal?.penerimaanBaik);
+        const plb = parseNum(grandTotal?.pengeluaranLainBaik);
 
         if (isPastMonth) {
           kData.antarLpp.lpp03_prev = sak;
@@ -1172,9 +1184,11 @@ class IasAutomationService {
           kData.antarLpp.lpp03_me_awal = sa;
           kData.antarLpp.lpp03_me_akhir = sak;
           kData.lpp03_penerimaanBaik = pb;
-          kData.pembanding.pengeluaranLain = (kData.lpp02_penerimaanBaik || 0) + pb; // BA Retur IDM = 0
+          kData.lpp03_pengeluaranLainBaik = plb;
+          kData.pembanding.penerimaanLain = (kData.lpp02_pengeluaranLainBaik || 0) + plb;
+          kData.pembanding.pengeluaranLain = (kData.lpp02_penerimaanBaik || 0) + pb + (kData.baReturIdm || 0);
           this.saveKroscekData(kData);
-          addLog('success', `[IAS] 🔄 Sinkronisasi nilai LPP 03 (Rusak) ke Kroscek Antar LPP & Pengeluaran Lain Pembanding (Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}) berhasil!`);
+          addLog('success', `[IAS] 🔄 Sinkronisasi LPP 03 (Rusak) -> Penerimaan Lain: Rp ${kData.pembanding.penerimaanLain.toLocaleString('id-ID')} | Pengeluaran Lain: Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')} berhasil!`);
         }
       }
 
@@ -1186,7 +1200,9 @@ class IasAutomationService {
       addLog('error', `[IAS] ❌ [REGISTER LPP] Gagal: ${err.message}`);
       throw err;
     } finally {
-      this.activeTask = null;
+      if (!isParentAutoSync) {
+        this.activeTask = null;
+      }
     }
   }
 
@@ -1283,6 +1299,7 @@ class IasAutomationService {
       updatedAt: new Date().toISOString()
     };
     fs.writeFileSync(kPath, JSON.stringify(merged, null, 2));
+    logEmitter.emit('ias-kroscek-update', merged);
     addLog('info', `[IAS] 💾 Data Kroscek LPP berhasil disimpan.`);
     return merged;
   }
@@ -1317,14 +1334,14 @@ class IasAutomationService {
       return parseInt(String(val).replace(/,/g, '').trim(), 10) || 0;
     };
 
-    const saldoAwal = parseNum(gt.saldoAwal?.rp);
-    const saldoAkhir = parseNum(gt.saldoAkhir?.rp);
+    const saldoAwal = parseNum(gt.saldoAwal?.rp || gt.saldoAwal);
+    const saldoAkhir = parseNum(gt.saldoAkhir?.rp || gt.saldoAkhir);
 
     data.periode = regLpp.periode || data.periode;
     data.lpp01 = {
       ...data.lpp01,
-      saldoAkhirSebelumME: data.lpp01.saldoAkhirSebelumME || saldoAkhir || saldoAwal,
-      saldoAwalBulanME: data.lpp01.saldoAwalBulanME || saldoAkhir || saldoAwal,
+      saldoAkhirSebelumME: data.lpp01.saldoAkhirSebelumME || saldoAwal,
+      saldoAwalBulanME: saldoAwal,
       pembelianMurni: parseNum(gt.pembelianMurni || gt.murni),
       pembelianBonus: parseNum(gt.pembelianBonus || gt.bonus),
       transferIn: parseNum(gt.transferIn),
@@ -1535,16 +1552,18 @@ class IasAutomationService {
     const saldoAwalNum = parseNum(gt?.saldoAwal?.rp || gt?.saldoAwal);
     const saldoAkhirNum = parseNum(gt?.saldoAkhir?.rp || gt?.saldoAkhir);
     const pBaik02 = parseNum(gt?.penerimaanBaik);
+    const plb02 = parseNum(gt?.pengeluaranLainBaik);
 
     const kData = this.getKroscekData();
     kData.antarLpp.lpp02_me_awal = saldoAwalNum;
     kData.antarLpp.lpp02_me_akhir = saldoAkhirNum;
     kData.lpp02_penerimaanBaik = pBaik02;
-    const pBaik03 = parseNum(kData.lpp03_penerimaanBaik || 0);
-    kData.pembanding.pengeluaranLain = pBaik02 + pBaik03; // BA Retur IDM di-0-kan
+    kData.lpp02_pengeluaranLainBaik = plb02;
+    kData.pembanding.penerimaanLain = plb02 + (kData.lpp03_pengeluaranLainBaik || 0);
+    kData.pembanding.pengeluaranLain = pBaik02 + (kData.lpp03_penerimaanBaik || 0) + (kData.baReturIdm || 0);
     this.saveKroscekData(kData);
 
-    addLog('success', `[IAS] ✅ Data LPP 02 (LPP08) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik02.toLocaleString('id-ID')}. Nilai LAIN2 (Pengeluaran) Pembanding otomatis diisi Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
+    addLog('success', `[IAS] ✅ Data LPP 02 (LPP08) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik02.toLocaleString('id-ID')}, Pengeluaran Lain Baik = Rp ${plb02.toLocaleString('id-ID')}. LAIN2 (Penerimaan): Rp ${kData.pembanding.penerimaanLain.toLocaleString('id-ID')}, LAIN2 (Pengeluaran): Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
 
     return {
       success: true,
@@ -1582,16 +1601,18 @@ class IasAutomationService {
     const saldoAwalNum = parseNum(gt?.saldoAwal?.rp || gt?.saldoAwal);
     const saldoAkhirNum = parseNum(gt?.saldoAkhir?.rp || gt?.saldoAkhir);
     const pBaik03 = parseNum(gt?.penerimaanBaik);
+    const plb03 = parseNum(gt?.pengeluaranLainBaik);
 
     const kData = this.getKroscekData();
     kData.antarLpp.lpp03_me_awal = saldoAwalNum;
     kData.antarLpp.lpp03_me_akhir = saldoAkhirNum;
     kData.lpp03_penerimaanBaik = pBaik03;
-    const pBaik02 = parseNum(kData.lpp02_penerimaanBaik || 0);
-    kData.pembanding.pengeluaranLain = pBaik02 + pBaik03; // BA Retur IDM di-0-kan
+    kData.lpp03_pengeluaranLainBaik = plb03;
+    kData.pembanding.penerimaanLain = (kData.lpp02_pengeluaranLainBaik || 0) + plb03;
+    kData.pembanding.pengeluaranLain = (kData.lpp02_penerimaanBaik || 0) + pBaik03 + (kData.baReturIdm || 0);
     this.saveKroscekData(kData);
 
-    addLog('success', `[IAS] ✅ Data LPP 03 (LPP10) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik03.toLocaleString('id-ID')}. Nilai LAIN2 (Pengeluaran) Pembanding otomatis diisi Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
+    addLog('success', `[IAS] ✅ Data LPP 03 (LPP10) berhasil ditarik: Saldo Awal = Rp ${saldoAwalNum.toLocaleString('id-ID')}, Saldo Akhir = Rp ${saldoAkhirNum.toLocaleString('id-ID')}, Penerimaan Baik = Rp ${pBaik03.toLocaleString('id-ID')}, Pengeluaran Lain Baik = Rp ${plb03.toLocaleString('id-ID')}. LAIN2 (Penerimaan): Rp ${kData.pembanding.penerimaanLain.toLocaleString('id-ID')}, LAIN2 (Pengeluaran): Rp ${kData.pembanding.pengeluaranLain.toLocaleString('id-ID')}`);
 
     return {
       success: true,
@@ -1607,8 +1628,8 @@ class IasAutomationService {
 
   async fetchAndParseDaftarPembelian(opts = {}) {
     const config = this.getConfig();
-    const tgl1 = opts.tgl1 || config.periode1 || '01/09/2026';
-    const tgl2 = opts.tgl2 || config.periode2 || tgl1;
+    const tgl1 = opts.tgl1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || opts.periode2 || config.periode2 || '30/09/2026';
 
     addLog('info', `[IAS] 🛍️ Mengambil Laporan Daftar Pembelian (Periode: ${tgl1} s/d ${tgl2})...`);
 
@@ -1688,6 +1709,329 @@ class IasAutomationService {
   }
 
   /**
+   * Helper untuk mengambil & memparsing Laporan Cetak Register (TAC, MPP, NBH, SJ, dll)
+   * URL: /bo/cetak-register/print?register={CODE}&tgl1={TGL1}&tgl2={TGL2}&cabang=ALL
+   */
+  async fetchAndParseCetakRegister(registerCode, tgl1, tgl2) {
+    const config = this.getConfig();
+    const session = await this.getOrCreateSession();
+    const page = session.page;
+    const baseUrl = (config.baseUrl || process.env.IAS_BASE_URL || 'http://172.31.146.190').replace(/\/$/, '');
+    const url = `${baseUrl}/bo/cetak-register/print?register=${registerCode}&tgl1=${tgl1}&tgl2=${tgl2}&cabang=ALL`;
+
+    addLog('info', `[IAS] 📋 Mengambil Cetak Register ${registerCode} (${url})...`);
+
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+      const html = await page.content();
+
+      if (html.includes('TIDAK ADA DATA')) {
+        addLog('info', `[IAS] ℹ️ Cetak Register ${registerCode} (${tgl1} s/d ${tgl2}): TIDAK ADA DATA. Nilai dihitung 0.`);
+        return { totalNilai: 0, html };
+      }
+
+      // Cari baris TOTAL, TOTAL SELURUHNYA, atau GRAND TOTAL
+      const trRegex = /<tr[^>]*>(?:(?!<tr)[\s\S])*?TOTAL[\s\S]*?<\/tr>/gi;
+      let match;
+      let lastTotalCells = [];
+      while ((match = trRegex.exec(html)) !== null) {
+        const rowHtml = match[0];
+        const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+        const cells = [];
+        let cm;
+        while ((cm = cellRegex.exec(rowHtml)) !== null) {
+          cells.push(cm[1].replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' '));
+        }
+        if (cells.length > 0) {
+          lastTotalCells = cells;
+        }
+      }
+
+      const parseVal = (str) => {
+        if (!str) return 0;
+        return parseFloat(String(str).replace(/,/g, '').trim()) || 0;
+      };
+
+      let totalNilai = 0;
+      // Ambil angka terakhir atau terbesar di baris TOTAL
+      for (let i = lastTotalCells.length - 1; i >= 0; i--) {
+        const val = parseVal(lastTotalCells[i]);
+        if (val !== 0) {
+          totalNilai = val;
+          break;
+        }
+      }
+
+      addLog('success', `[IAS] ✅ [REGISTER ${registerCode}] Total Nilai diekstrak: Rp ${Math.round(totalNilai).toLocaleString('id-ID')}`);
+      return { totalNilai: Math.round(totalNilai), html };
+    } catch (err) {
+      addLog('warning', `[IAS] ⚠️ [REGISTER ${registerCode}] Gagal mengambil data: ${err.message}`);
+      return { totalNilai: 0, error: err.message };
+    }
+  }
+
+  /**
+   * Mengambil Nilai TRANSFER IN (Pembanding):
+   * Nilai TAC: /bo/cetak-register/print?register=I&tgl1=...&tgl2=...&cabang=ALL
+   * + Nilai TAC BATAL: /bo/cetak-register/print?register=I2&tgl1=...&tgl2=...&cabang=ALL
+   */
+  async fetchAndParseTransferIn(opts = {}) {
+    const config = this.getConfig();
+    const tgl1 = opts.tgl1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 🔄 Mengambil Data TRANSFER IN (TAC + TAC BATAL, Periode: ${tgl1} s/d ${tgl2})...`);
+
+    const resTac = await this.fetchAndParseCetakRegister('I', tgl1, tgl2);
+    const resTacBatal = await this.fetchAndParseCetakRegister('I2', tgl1, tgl2);
+
+    const nilaiTac = resTac.totalNilai || 0;
+    const nilaiTacBatal = resTacBatal.totalNilai || 0;
+    const totalTransferIn = nilaiTac + nilaiTacBatal;
+
+    // Update ke file kroscek data
+    const kData = this.getKroscekData();
+    kData.pembanding.transferIn = totalTransferIn;
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ [TRANSFER IN] TAC (Register=I): Rp ${nilaiTac.toLocaleString('id-ID')} | TAC BATAL (Register=I2): Rp ${nilaiTacBatal.toLocaleString('id-ID')} => Total Pembanding Transfer In: Rp ${totalTransferIn.toLocaleString('id-ID')}`);
+
+    return {
+      success: true,
+      periode: `${tgl1} s/d ${tgl2}`,
+      nilaiTac,
+      nilaiTacBatal,
+      totalTransferIn,
+      kroscekData: kData
+    };
+  }
+
+  /**
+   * Mengambil Nilai REPACK & PREPACK (Pembanding):
+   * Cetak Register Repacking: /bo/cetak-register/print?register=P&tgl1=...&tgl2=...
+   */
+  async fetchAndParseRepacking(opts = {}) {
+    const config = this.getConfig();
+    const tgl1 = opts.tgl1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 📦 Mengambil Data REPACKING (Register=P, Periode: ${tgl1} s/d ${tgl2})...`);
+
+    const resP = await this.fetchAndParseCetakRegister('P', tgl1, tgl2);
+    const nilaiRepack = resP.totalNilai || 0;
+
+    // Update ke file kroscek data (Sesuai SOP: Repack dan Prepack pembanding bernilai sama)
+    const kData = this.getKroscekData();
+    kData.pembanding.repack = nilaiRepack;
+    kData.pembanding.prepack = nilaiRepack;
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ [REPACKING] Nilai diekstrak: Rp ${nilaiRepack.toLocaleString('id-ID')} => Diupdate ke Pembanding REPACK & PREPACK`);
+
+    return {
+      success: true,
+      periode: `${tgl1} s/d ${tgl2}`,
+      nilaiRepack,
+      kroscekData: kData
+    };
+  }
+
+  /**
+   * Mengambil Nilai TRANSFER OUT (Pembanding):
+   * Nilai Surat Jalan (SJ): /bo/cetak-register/print?register=O&tgl1=...&tgl2=...&cabang=ALL
+   * + Nilai Batal SJ: /bo/cetak-register/print?register=O2&tgl1=...&tgl2=...&cabang=ALL
+   */
+  async fetchAndParseTransferOut(opts = {}) {
+    const config = this.getConfig();
+    const tgl1 = opts.tgl1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 🚚 Mengambil Data TRANSFER OUT (Surat Jalan O + Batal SJ O2, Periode: ${tgl1} s/d ${tgl2})...`);
+
+    const resSj = await this.fetchAndParseCetakRegister('O', tgl1, tgl2);
+    const resSjBatal = await this.fetchAndParseCetakRegister('O2', tgl1, tgl2);
+
+    const nilaiSj = resSj.totalNilai || 0;
+    const nilaiSjBatal = resSjBatal.totalNilai || 0;
+    const totalTransferOut = nilaiSj + nilaiSjBatal;
+
+    // Update ke file kroscek data
+    const kData = this.getKroscekData();
+    kData.pembanding.transferOut = totalTransferOut;
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ [TRANSFER OUT] SJ (Register=O): Rp ${nilaiSj.toLocaleString('id-ID')} | Batal SJ (Register=O2): Rp ${nilaiSjBatal.toLocaleString('id-ID')} => Total Pembanding Transfer Out: Rp ${totalTransferOut.toLocaleString('id-ID')}`);
+
+    return {
+      success: true,
+      periode: `${tgl1} s/d ${tgl2}`,
+      nilaiSj,
+      nilaiSjBatal,
+      totalTransferOut,
+      kroscekData: kData
+    };
+  }
+
+  /**
+   * Mengambil Nilai HILANG / NBH (Pembanding):
+   * Cetak Register NBH: /bo/cetak-register/print?register=H&tgl1=...&tgl2=...
+   * Cetak Register Batal NBH: /bo/cetak-register/print?register=H2&tgl1=...&tgl2=...
+   * Rumus: Total (H) - Batal (H2)
+   */
+  async fetchAndParseHilang(opts = {}) {
+    const config = this.getConfig();
+    const tgl1 = opts.tgl1 || opts.periode1 || config.periode1 || '01/09/2026';
+    const tgl2 = opts.tgl2 || opts.periode2 || config.periode2 || '30/09/2026';
+
+    addLog('info', `[IAS] 🏷️ Mengambil Data HILANG (Register NBH=H, Periode: ${tgl1} s/d ${tgl2})...`);
+
+    const resNbh = await this.fetchAndParseCetakRegister('H', tgl1, tgl2);
+    const resNbhBatal = await this.fetchAndParseCetakRegister('H2', tgl1, tgl2);
+
+    const nilaiNbh = resNbh.totalNilai || 0;
+    const nilaiNbhBatal = resNbhBatal.totalNilai || 0;
+    const totalHilang = Math.max(0, nilaiNbh - nilaiNbhBatal);
+
+    // Update ke file kroscek data
+    const kData = this.getKroscekData();
+    kData.pembanding.hilang = totalHilang;
+    this.saveKroscekData(kData);
+
+    addLog('success', `[IAS] ✅ [HILANG / NBH] NBH (Register=H): Rp ${nilaiNbh.toLocaleString('id-ID')} | Batal NBH (Register=H2): Rp ${nilaiNbhBatal.toLocaleString('id-ID')} => Total Pembanding Hilang: Rp ${totalHilang.toLocaleString('id-ID')}`);
+
+    return {
+      success: true,
+      periode: `${tgl1} s/d ${tgl2}`,
+      nilaiNbh,
+      nilaiNbhBatal,
+      totalHilang,
+      kroscekData: kData
+    };
+  }
+
+  /**
+   * Mengambil Nilai LAP REKAP ADJUST SO (Pembanding SO):
+   * URL: /bo/lpp/register-lpp/cetak-bagian-2?menu=LPP01&export_type=pdf&periode1=...&periode2=...&prdcd1=&prdcd2=&dep1=&dep2=&mtr1=&mtr2=&kat1=&kat2=&sup1=&sup2=&tipe=3&banyakitem=
+   * Ambil kolom Total
+   */
+  async fetchAndParseAdjustSO(opts = {}) {
+    const config = this.getConfig();
+    const p1 = opts.periode1 || opts.tgl1 || config.periode1 || '01/09/2026';
+    const p2 = opts.periode2 || opts.tgl2 || config.periode2 || '18/09/2026';
+    const menu = opts.menu || 'LPP01';
+    const tipe = opts.tipe || '3';
+
+    addLog('info', `[IAS] 📦 Mengambil Laporan Rekap Adjust SO (${menu}, Bagian 2, Periode: ${p1} s/d ${p2})...`);
+
+    const session = await this.getOrCreateSession();
+    const page = session.page;
+    const baseUrl = (config.baseUrl || process.env.IAS_BASE_URL || 'http://172.31.146.190').replace(/\/$/, '');
+
+    const queryParams = new URLSearchParams({
+      menu,
+      export_type: 'pdf',
+      periode1: p1,
+      periode2: p2,
+      prdcd1: '',
+      prdcd2: '',
+      dep1: '',
+      dep2: '',
+      mtr1: '',
+      mtr2: '',
+      kat1: '',
+      kat2: '',
+      sup1: '',
+      sup2: '',
+      tipe,
+      banyakitem: ''
+    });
+
+    const url = `${baseUrl}/bo/lpp/register-lpp/cetak-bagian-2?${queryParams.toString()}`;
+
+    try {
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      const html = await response.text();
+
+      const stripTags = (str) => (str || '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const parseVal = (str) => {
+        if (!str) return 0;
+        let s = String(str).replace(/,/g, '').trim();
+        if (s.startsWith('(') && s.endsWith(')')) {
+          s = '-' + s.substring(1, s.length - 1);
+        }
+        return parseFloat(s) || 0;
+      };
+
+      let totalSO = 0;
+
+      if (html.includes('TIDAK ADA DATA')) {
+        addLog('info', `[IAS] ℹ️ Laporan Adjust SO (${p1} s/d ${p2}): TIDAK ADA DATA. Nilai dihitung 0.`);
+      } else {
+        const trRegex = /<tr[\s\S]*?<\/tr>/gi;
+        const cellRegex = /<(?:td|th)[\s\S]*?<\/(?:td|th)>/gi;
+        let match;
+        let totalColIdx = -1;
+
+        while ((match = trRegex.exec(html)) !== null) {
+          const trHtml = match[0];
+          const cells = trHtml.match(cellRegex);
+          if (!cells || cells.length === 0) continue;
+
+          // Cek apakah baris header
+          if (totalColIdx === -1 && (trHtml.includes('<th') || trHtml.toUpperCase().includes('TOTAL'))) {
+            for (let i = 0; i < cells.length; i++) {
+              const text = stripTags(cells[i]).toUpperCase();
+              if (text === 'TOTAL' || text === 'TOTAL RP' || text === 'TOTAL NILAI') {
+                totalColIdx = i;
+                break;
+              }
+            }
+          }
+
+          const col0 = stripTags(cells[0]).toUpperCase();
+          if (col0.startsWith('TOTAL SELURUHNYA') || col0.startsWith('TOTAL') || col0.startsWith('GRAND TOTAL')) {
+            if (totalColIdx >= 0 && cells[totalColIdx]) {
+              totalSO = parseVal(stripTags(cells[totalColIdx]));
+            } else {
+              for (let i = cells.length - 1; i >= 1; i--) {
+                const val = parseVal(stripTags(cells[i]));
+                if (val !== 0) {
+                  totalSO = val;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      // Update ke file kroscek data
+      const kData = this.getKroscekData();
+      kData.pembanding.so = Math.round(totalSO);
+      this.saveKroscekData(kData);
+
+      addLog('success', `[IAS] ✅ [REKAP ADJUST SO] Total SO Pembanding diekstrak: Rp ${Math.round(totalSO).toLocaleString('id-ID')}`);
+
+      return {
+        success: true,
+        periode: `${p1} s/d ${p2}`,
+        totalSO: Math.round(totalSO),
+        kroscekData: kData
+      };
+    } catch (err) {
+      addLog('warning', `[IAS] ⚠️ [REKAP ADJUST SO] Gagal mengambil data: ${err.message}`);
+      return { totalSO: 0, error: err.message };
+    }
+  }
+
+  /**
    * Mengambil Laporan Penjualan (HPP Rata-rata) dari portal Web IAS / FO
    * URL: /fo/laporan-kasir/penjualan/printdocumentmenu2?date1=...&date2=...&grosira=T&export=T&export_type=pdf&lst_print=INDOGROSIR%20ALL%20[IGR%20+%20(OMI/IDM)]
    */
@@ -1745,85 +2089,207 @@ class IasAutomationService {
         throw new Error('Tidak dapat menemukan data tabel dalam dokumen PDF Penjualan.');
       }
 
-      // Parse text blocks with coordinates
-      const blocks = [];
-      const btRegex = /BT([\s\S]*?)ET/g;
-      let bm;
-      while ((bm = btRegex.exec(textStream)) !== null) {
-        const block = bm[1];
-        const tdMatch = block.match(/([\d.]+)\s+([\d.]+)\s+Td/);
-        const x = tdMatch ? parseFloat(tdMatch[1]) : 0;
-        const y = tdMatch ? parseFloat(tdMatch[2]) : 0;
-        
-        const tjMatch = block.match(/\[\s*([\s\S]*?)\s*\]\s*TJ/);
-        let text = '';
-        if (tjMatch) {
-          const parts = tjMatch[1].match(/\(([^)]*)\)/g) || [];
-          text = parts.map(p => p.slice(1, -1)).join('');
-        } else {
-          const singleMatch = block.match(/\(([^)]*)\)\s*Tj/);
-          if (singleMatch) text = singleMatch[1];
-        }
-        if (text) {
-          blocks.push({ x, y, text: text.trim() });
-        }
-      }
+      // Parse grand total line
+      const cleanText = textStream
+        .replace(/\\([0-9]{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
+        .replace(/\\(.)/g, '$1');
 
-      const rows = {};
-      blocks.forEach(b => {
-        const yKey = Math.round(b.y);
-        if (!rows[yKey]) rows[yKey] = [];
-        rows[yKey].push(b);
-      });
+      const parseIndoNumber = (numStr) => {
+        if (!numStr) return 0;
+        let clean = numStr.replace(/\./g, '').replace(/,/g, '.').trim();
+        return parseFloat(clean) || 0;
+      };
 
-      const sortedY = Object.keys(rows).map(Number).sort((a,b) => a - b);
-      let grandTotalRow = null;
-      for (const y of sortedY) {
-        const rowItems = rows[y].sort((a,b) => a.x - b.x);
-        const lineText = rowItems.map(i => i.text).join(' ');
-        if (lineText.includes('GRAND TOTAL')) {
-          grandTotalRow = rowItems;
-          break;
+      let hppRata2 = 0;
+      let grandTotalSales = 0;
+
+      const lines = cleanText.split('\n');
+      for (const line of lines) {
+        if (line.includes('GRAND TOTAL') || line.includes('TOTAL SELURUH')) {
+          const numbers = line.match(/-?\d[\d.,]*/g) || [];
+          if (numbers.length >= 2) {
+            grandTotalSales = parseIndoNumber(numbers[numbers.length - 1]);
+            for (let n of numbers) {
+              const val = parseIndoNumber(n);
+              if (val > 1000000 && val !== grandTotalSales) {
+                hppRata2 = val;
+                break;
+              }
+            }
+          }
         }
       }
 
-      if (!grandTotalRow) {
-        throw new Error('Baris GRAND TOTAL tidak ditemukan dalam laporan penjualan.');
+      if (hppRata2 === 0) {
+        const numMatches = cleanText.match(/-?\d{1,3}(?:\.\d{3})+(?:,\d+)?/g) || [];
+        const parsedNums = numMatches.map(parseIndoNumber).filter(n => n > 100000);
+        if (parsedNums.length > 0) {
+          hppRata2 = parsedNums[parsedNums.length - 1];
+        }
       }
 
-      const parseNum = (s) => parseInt(String(s || '0').replace(/,/g, ''), 10) || 0;
-      const numItems = grandTotalRow.filter(i => /^[\d,]+(\.\d+)?$/.test(i.text.replace(/[()]/g, '')));
-
-      const penjualanKotor = parseNum(numItems[0]?.text);
-      const ppn = parseNum(numItems[1]?.text);
-      const bebasPpn = parseNum(numItems[2]?.text);
-      const ppnDtp = parseNum(numItems[3]?.text);
-      const penjualanBersih = parseNum(numItems[4]?.text);
-      const hppRata2 = parseNum(numItems[5]?.text);
-      const marginRp = parseNum(numItems[6]?.text);
-
-      // Update ke file kroscek data (Baris PENJUALAN)
       const kData = this.getKroscekData();
-      kData.pembanding.penjualan = hppRata2;
+      kData.pembanding.penjualan = Math.round(hppRata2);
       this.saveKroscekData(kData);
 
-      addLog('success', `[IAS] ✅ [LAPORAN PENJUALAN] HPP Rata2: Rp ${hppRata2.toLocaleString('id-ID')} | Penjualan Bersih: Rp ${penjualanBersih.toLocaleString('id-ID')} (Periode: ${date1} s/d ${date2}) berhasil dimasukkan ke kolom Pembanding Penjualan!`);
+      addLog('success', `[IAS] ✅ [LAPORAN PENJUALAN] HPP Rata2 diekstrak: Rp ${Math.round(hppRata2).toLocaleString('id-ID')} | Penjualan Bersih: Rp ${Math.round(grandTotalSales).toLocaleString('id-ID')}`);
 
       return {
         success: true,
         periode: `${date1} s/d ${date2}`,
-        penjualanKotor,
-        ppn,
-        bebasPpn,
-        ppnDtp,
-        penjualanBersih,
-        hppRata2,
-        marginRp,
+        hppRata2: Math.round(hppRata2),
+        penjualanBersih: Math.round(grandTotalSales),
         kroscekData: kData
       };
     } catch (err) {
-      addLog('error', `[IAS] ❌ [LAPORAN PENJUALAN] Gagal mengambil: ${err.message}`);
+      addLog('warning', `[IAS] ⚠️ [LAPORAN PENJUALAN] Gagal mengambil data: ${err.message}`);
+      return { hppRata2: 0, penjualanBersih: 0, error: err.message };
+    }
+  }
+
+  /**
+   * Auto Sync All Kroscek Reports in 1-Click:
+   * 1. Register LPP 01
+   * 2. LPP Bulan Sebelumnya
+   * 3. Laporan Daftar Pembelian
+   * 4. Transfer In (TAC + TAC Batal)
+   * 5. Repacking (Register=P)
+   * 6. Laporan Penjualan (HPP Rata2)
+   * 7. Transfer Out (Surat Jalan O + Batal SJ O2)
+   * 8. Hilang (Register NBH=H - Batal H2)
+   * 9. Rekap Adjust SO (Cetak Bagian 2)
+   * 10. LPP 02 (Retur)
+   * 11. LPP 03 (Rusak)
+   */
+  async autoSyncAllKroscek(opts = {}) {
+    if (this.activeTask) {
+      throw new Error(`Saat ini sedang berjalan tugas: ${this.activeTask}. Mohon tunggu hingga selesai.`);
+    }
+
+    this.activeTask = 'AUTO_KROSCEK_ALL';
+    const totalSteps = 11;
+    const emitProgress = (step, title, status = 'IN_PROGRESS') => {
+      logEmitter.emit('ias-task-status', {
+        task: 'AUTO_KROSCEK_ALL',
+        step,
+        totalSteps,
+        percentage: Math.round((step / totalSteps) * 100),
+        title,
+        status
+      });
+    };
+
+    try {
+      const p1 = opts.periode1 || '01/09/2026';
+      const p2 = opts.periode2 || '30/09/2026';
+
+      addLog('info', `🚀 [AUTO-KROSCEK] Memulai penarikan & kroscek otomatis seluruh data persediaan LPP (${p1} s/d ${p2})...`);
+
+      // 1. LPP 01 (Baik Ringkasan Divisi)
+      emitProgress(1, 'Mengambil Laporan Register LPP 01...');
+      try {
+        await this.fetchAndParseRegisterLPP({ menu: 'LPP01', periode1: p1, periode2: p2, export_type: 'pdf', tipe: '3' });
+        this.syncKroscekFromLpp01();
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan LPP 01: ${e.message}`);
+      }
+
+      // 2. LPP Bulan Sebelumnya (Saldo Akhir Sebelum ME & Antar LPP Bulan Lalu)
+      emitProgress(2, 'Mengambil LPP Bulan Sebelumnya...');
+      try {
+        await this.fetchLppBulanSebelumnya({ periode1: p1, menu: 'ALL' });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan LPP Bulan Lalu: ${e.message}`);
+      }
+
+      // 3. Laporan Daftar Pembelian (Gross - Potongan + Disc4)
+      emitProgress(3, 'Mengambil Laporan Daftar Pembelian...');
+      try {
+        await this.fetchAndParseDaftarPembelian({ tgl1: p1, tgl2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Daftar Pembelian: ${e.message}`);
+      }
+
+      // 4. Transfer In (TAC + TAC Batal)
+      emitProgress(4, 'Mengambil Laporan Transfer In (TAC + TAC Batal)...');
+      try {
+        await this.fetchAndParseTransferIn({ tgl1: p1, tgl2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Transfer In: ${e.message}`);
+      }
+
+      // 5. Repacking (Register=P) -> Repack & Prepack Pembanding
+      emitProgress(5, 'Mengambil Laporan Repacking (Register=P)...');
+      try {
+        await this.fetchAndParseRepacking({ tgl1: p1, tgl2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Repacking: ${e.message}`);
+      }
+
+      // 6. Laporan Penjualan (HPP Rata2)
+      emitProgress(6, 'Mengambil Laporan Penjualan (FO Kasir)...');
+      try {
+        await this.fetchAndParseLaporanPenjualan({ periode1: p1, periode2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Lap. Penjualan: ${e.message}`);
+      }
+
+      // 7. Transfer Out (Surat Jalan O + Batal SJ O2)
+      emitProgress(7, 'Mengambil Laporan Transfer Out (Surat Jalan O + Batal O2)...');
+      try {
+        await this.fetchAndParseTransferOut({ tgl1: p1, tgl2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Transfer Out: ${e.message}`);
+      }
+
+      // 8. Hilang (Register NBH=H - Batal H2)
+      emitProgress(8, 'Mengambil Laporan Barang Hilang (Register NBH)...');
+      try {
+        await this.fetchAndParseHilang({ tgl1: p1, tgl2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Hilang/NBH: ${e.message}`);
+      }
+
+      // 9. Rekap Adjust SO (Cetak Bagian 2)
+      emitProgress(9, 'Mengambil Laporan Rekap Adjust SO (Bagian 2)...');
+      try {
+        await this.fetchAndParseAdjustSO({ periode1: p1, periode2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan Adjust SO: ${e.message}`);
+      }
+
+      // 10. LPP 02 (Retur)
+      emitProgress(10, 'Mengambil Data LPP 02 (Retur)...');
+      try {
+        await this.fetchLpp02({ periode1: p1, periode2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan LPP 02: ${e.message}`);
+      }
+
+      // 11. LPP 03 (Rusak)
+      emitProgress(11, 'Mengambil Data LPP 03 (Rusak)...');
+      try {
+        await this.fetchLpp03({ periode1: p1, periode2: p2 });
+      } catch (e) {
+        addLog('warning', `[AUTO-KROSCEK] Catatan LPP 03: ${e.message}`);
+      }
+
+      const latestKroscek = this.getKroscekData();
+      logEmitter.emit('ias-kroscek-update', latestKroscek);
+      emitProgress(11, 'Semua data laporan berhasil ditarik dan disinkronkan!', 'DONE');
+      addLog('success', `🎉 [AUTO-KROSCEK] Selesai menarik dan mengkroscek semua data laporan persediaan secara otomatis!`);
+
+      return {
+        success: true,
+        data: latestKroscek,
+        kroscekData: latestKroscek
+      };
+    } catch (err) {
+      emitProgress(0, `Gagal: ${err.message}`, 'ERROR');
+      addLog('error', `❌ [AUTO-KROSCEK] Gagal: ${err.message}`);
       throw err;
+    } finally {
+      this.activeTask = null;
     }
   }
 }

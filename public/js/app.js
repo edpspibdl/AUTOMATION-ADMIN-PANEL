@@ -64,8 +64,6 @@ const btnRunMarminGuardNow = document.getElementById('btnRunMarminGuardNow');
 const toggleDailySchedule = document.getElementById('toggleDailySchedule');
 const inputDailyTime = document.getElementById('inputDailyTime');
 const selectDailyAction = document.getElementById('selectDailyAction');
-const inputDailyEnableTime = document.getElementById('inputDailyEnableTime');
-const selectDailyEnableAction = document.getElementById('selectDailyEnableAction');
 const btnSaveConfig = document.getElementById('btnSaveConfig');
 const btnRunManualDirect = document.getElementById('btnRunManualDirect');
 
@@ -259,8 +257,6 @@ async function loadConfig() {
     toggleDailySchedule.checked = !!data.dailyScheduleEnabled;
     inputDailyTime.value = data.dailyScheduleTime || '22:00';
     selectDailyAction.value = data.dailyAction || 'nonaktif';
-    inputDailyEnableTime.value = data.dailyEnableTime || '08:00';
-    selectDailyEnableAction.value = data.dailyEnableAction || 'aktif';
     
     // DB Form Controls
     const db = data.dbConfig || {};
@@ -322,14 +318,12 @@ async function saveAllConfig() {
     dailyScheduleEnabled: toggleDailySchedule.checked,
     dailyScheduleTime: inputDailyTime.value,
     dailyAction: selectDailyAction.value,
-    dailyEnableTime: inputDailyEnableTime.value,
-    dailyEnableAction: selectDailyEnableAction.value,
     plus: currentConfig.plus || []
   };
 
   try {
     btnSaveConfig.disabled = true;
-    btnSaveConfig.innerHTML = '<span>⏳</span> Menyimpan...';
+    btnSaveConfig.innerHTML = 'Menyimpan...';
 
     const res = await fetch('/api/config', {
       method: 'POST',
@@ -348,7 +342,7 @@ async function saveAllConfig() {
     showAlert('error', 'Koneksi Gagal', err.message);
   } finally {
     btnSaveConfig.disabled = false;
-    btnSaveConfig.innerHTML = '<span>💾</span> Simpan Pengaturan';
+    btnSaveConfig.innerHTML = 'Simpan Pengaturan';
   }
 }
 
@@ -584,17 +578,22 @@ function triggerManualScheduleNow() {
     return;
   }
 
-  const actionText = (currentConfig.dailyAction || 'nonaktif').toUpperCase();
+  const selectedAction = selectDailyAction ? selectDailyAction.value : (currentConfig.dailyAction || 'nonaktif');
+  const actionText = selectedAction.toUpperCase();
 
   showConfirmDialog(
     'Jalankan PLU Manual Sekarang?',
     `Apakah Anda ingin memproses ${count} PLU manual untuk aksi [${actionText}] saat ini?`,
     async () => {
       try {
-        const res = await fetch('/api/run-manual-now', { method: 'POST' });
+        const res = await fetch('/api/run-manual-now', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: selectedAction })
+        });
         const data = await res.json();
         if (data.success) {
-          showAlert('info', 'Otomatisasi Berjalan', 'Proses eksekusi PLU manual telah dimulai di latar belakang.');
+          showAlert('info', 'Otomatisasi Berjalan', `Proses eksekusi PLU manual (${actionText}) telah dimulai di latar belakang.`);
           updateRunningState(true);
         } else {
           showAlert('error', 'Gagal Memulai', data.message);
@@ -724,6 +723,11 @@ function initRealtimeLogStream() {
         if (Array.isArray(data.stokpoinLogs)) renderLogs(data.stokpoinLogs);
         if (Array.isArray(data.iasLogs)) renderIasLogs(data.iasLogs);
         if (typeof data.isRunning !== 'undefined') updateRunningState(data.isRunning);
+        if (data.iasSession) renderIasSessionState(data.iasSession);
+        if (data.iasKroscek) {
+          kroscekState = data.iasKroscek;
+          renderKroscekTables();
+        }
       } catch (err) {
         console.error('Error parsing SSE init event:', err);
       }
@@ -753,6 +757,36 @@ function initRealtimeLogStream() {
 
     logEventSource.addEventListener('ias-clear', () => {
       renderIasLogs([]);
+    });
+
+    logEventSource.addEventListener('ias-task-status', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleIasTaskProgress(data);
+      } catch (err) {
+        console.error('Error parsing SSE ias-task-status:', err);
+      }
+    });
+
+    logEventSource.addEventListener('ias-kroscek-update', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data) {
+          kroscekState = data;
+          renderKroscekTables();
+        }
+      } catch (err) {
+        console.error('Error parsing SSE ias-kroscek-update:', err);
+      }
+    });
+
+    logEventSource.addEventListener('ias-session-update', (e) => {
+      try {
+        const session = JSON.parse(e.data);
+        renderIasSessionState(session);
+      } catch (err) {
+        console.error('Error parsing SSE ias-session-update:', err);
+      }
     });
 
     logEventSource.onerror = () => {
@@ -1781,10 +1815,12 @@ function applyLppDataToUi(data) {
 }
 
 function renderLppTable() {
-  if (!cachedRegisterLpp || !tbodyLppDetail) return;
-
-  const query = (inputFilterLppTable ? inputFilterLppTable.value.trim().toLowerCase() : '');
-  const divFilter = (selectFilterLppDivisi ? selectFilterLppDivisi.value.trim().toUpperCase() : '');
+  if (!cachedRegisterLpp) return;
+  const tbodyInline = document.getElementById('tbodyLppDetailInline');
+  const query = (inputFilterLppTable ? inputFilterLppTable.value.trim().toLowerCase() : '') ||
+                (document.getElementById('inputFilterLppTableInline')?.value.trim().toLowerCase() || '');
+  const divFilter = (selectFilterLppDivisi ? selectFilterLppDivisi.value.trim().toUpperCase() : '') ||
+                   (document.getElementById('selectFilterLppDivisiInline')?.value.trim().toUpperCase() || '');
 
   let filtered = (cachedRegisterLpp.categories || []).filter(c => {
     if (divFilter && !c.divisi.toUpperCase().includes(divFilter)) return false;
@@ -1803,19 +1839,17 @@ function renderLppTable() {
   }
 
   if (filtered.length === 0) {
-    tbodyLppDetail.innerHTML = `
-      <tr class="empty-row">
-        <td colspan="22" style="text-align: center; padding: 24px; color: var(--text-dim);">
-          Tidak ada kategori yang cocok dengan filter pencarian.
-        </td>
-      </tr>
-    `;
+    const emptyMsg = `<tr class="empty-row"><td colspan="22" style="text-align: center; padding: 20px; color: var(--text-dim);">Tidak ada kategori yang cocok dengan filter pencarian.</td></tr>`;
+    if (tbodyLppDetail) tbodyLppDetail.innerHTML = emptyMsg;
+    if (tbodyInline) tbodyInline.innerHTML = `<tr class="empty-row"><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-dim);">Tidak ada kategori yang cocok dengan filter pencarian.</td></tr>`;
     return;
   }
 
-  let html = '';
+  let htmlModal = '';
+  let htmlInline = '';
+
   filtered.forEach(c => {
-    html += `
+    htmlModal += `
       <tr>
         <td style="padding: 6px 10px; color: var(--text-dim);">${escapeHtml(c.divisi)}</td>
         <td style="padding: 6px 10px; color: var(--text-dim);">${escapeHtml(c.departemen)}</td>
@@ -1841,37 +1875,22 @@ function renderLppTable() {
         <td style="padding: 6px 10px; text-align: right; color: var(--primary);">${escapeHtml(c.saldoAkhir?.qty || '0')}</td>
       </tr>
     `;
-  });
 
-  // Render Grand Total row at the bottom
-  if (cachedRegisterLpp.grandTotal) {
-    const gt = cachedRegisterLpp.grandTotal;
-    html += `
-      <tr style="background: #0b1329; font-weight: 700; border-top: 2px solid var(--primary); box-shadow: 0 -4px 12px rgba(0,0,0,0.6); position: sticky; bottom: 0; z-index: 5;">
-        <td colspan="4" style="padding: 8px 10px; color: var(--primary); background: #0b1329;">TOTAL SELURUHNYA (GRAND TOTAL)</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.saldoAwal?.rp || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; color: var(--primary); background: #0b1329;">${escapeHtml(gt.saldoAwal?.qty || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pembelianMurni || gt.murni || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pembelianBonus || gt.bonus || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.transferIn || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.returPenjualan || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.repackIn || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.penerimaanLain || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; color: var(--warning); background: #0b1329;">${escapeHtml(gt.penjualan || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.transferOut || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.repackOut || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; color: var(--danger); background: #0b1329;">${escapeHtml(gt.hilang || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.pengeluaranLain || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.so || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.penyesuaian || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; background: #0b1329;">${escapeHtml(gt.koreksi || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; color: var(--success); background: #0b1329;">${escapeHtml(gt.saldoAkhir?.rp || '0')}</td>
-        <td style="padding: 8px 10px; text-align: right; color: var(--primary); background: #0b1329;">${escapeHtml(gt.saldoAkhir?.qty || '0')}</td>
+    htmlInline += `
+      <tr>
+        <td style="padding: 6px 8px; color: var(--text-dim); font-size: 11px;">${escapeHtml(c.divisi)}</td>
+        <td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 11px;">${escapeHtml(c.kode)}</td>
+        <td style="padding: 6px 8px; font-weight: 600; color: var(--text-main); font-size: 11px;">${escapeHtml(c.namaKategori)}</td>
+        <td style="padding: 6px 8px; text-align: right; font-weight: 700; font-size: 11px;">${escapeHtml(c.saldoAwal?.rp || '0')}</td>
+        <td style="padding: 6px 8px; text-align: right; font-size: 11px; color: var(--success);">${escapeHtml(c.pembelianMurni || '0')}</td>
+        <td style="padding: 6px 8px; text-align: right; font-size: 11px; color: var(--warning);">${escapeHtml(c.penjualan || '0')}</td>
+        <td style="padding: 6px 8px; text-align: right; font-weight: 700; font-size: 11px; color: var(--primary);">${escapeHtml(c.saldoAkhir?.rp || '0')}</td>
       </tr>
     `;
-  }
+  });
 
-  tbodyLppDetail.innerHTML = html;
+  if (tbodyLppDetail) tbodyLppDetail.innerHTML = htmlModal;
+  if (tbodyInline) tbodyInline.innerHTML = htmlInline;
 }
 
 // Fetch Live Register LPP from Web IAS
@@ -1883,7 +1902,7 @@ async function triggerFetchRegisterLpp() {
   renderTaskBadge(badgeRegisterLppStatus, 'LOADING');
 
   const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
-  const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '01/09/2026';
+  const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '30/09/2026';
   const selectMenuEl = document.getElementById('selectRegisterLppMenu');
   const selectedMenu = selectMenuEl ? selectMenuEl.value : 'LPP01';
 
@@ -1993,24 +2012,151 @@ const bannerTidakBolehSelisih = document.getElementById('bannerTidakBolehSelisih
 const statusKroscekSummary = document.getElementById('statusKroscekSummary');
 
 const KROSCEK_ROWS = [
-  { key: 'saldoAkhirSebelumME', label: 'SALDO AKHIR BULAN SEBELUM ME', rumus: 'LPP BULAN LALU (Grand Total Saldo Akhir)', rule: 'LPP-01 Bulan Sebelumnya', isHeader: true },
-  { key: 'saldoAwalBulanME', label: 'SALDO AWAL BULAN ME', rumus: 'LPP BULAN INI vs LPP BULAN LALU', rule: 'LPP Bulan Lalu vs LPP Bulan Ini (Harus Sama)', isHeader: true },
-  { key: 'pembelianMurni', label: 'PEMBELIAN MURNI', rumus: 'LAP DFTR PEMBELIAN --> Gross - Potongan + Disc4', rule: 'IAS - BO - LAPORAN2-LAPORAN DFTR PEMBELIAN' },
-  { key: 'pembelianBonus', label: 'PEMBELIAN BONUS', rumus: '', rule: 'Bonus Pembelian' },
-  { key: 'transferIn', label: 'TRANSFER IN', rumus: 'REGISTER TAC + LAP TRANSFER HBV --> Total + Batal', rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)' },
-  { key: 'returPenjualan', label: 'RETUR PENJUALAN', rumus: 'OMI>>LAP REGISTER BARANG RETUR --> Total', rule: 'Kalo selisih berarti ada yang belum BPBR', alert: true },
-  { key: 'repack', label: 'REPACK', rumus: 'LAPORAN REPACKING --> HARUS SAMA DENGAN PREPACK', rule: 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dg prepack)' },
-  { key: 'penerimaanLain', label: 'LAIN2 (Penerimaan)', rumus: 'LPP RETUR + LPP RUSAK --> Pengeluaran Lain Baik', rule: 'IAS - BO - LPP' },
-  { key: 'penjualan', label: 'PENJUALAN', rumus: 'LAPORAN PENJUALAN --> HPP RATA2', rule: 'IAS - FO - LAP. KASIR (PER DEPT) - Dibawah 5000 OK', tolerance: 5000 },
-  { key: 'transferOut', label: 'TRANSFER OUT', rumus: 'REGISTER SURAT JALAN + LAP TRANSFER HBV--> Total + Batal', rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)' },
-  { key: 'prepack', label: 'PREPACK', rumus: 'LAPORAN PREPACK --> HARUS SAMA DENGAN REPACKING', rule: 'IAS - BO - TRANSAKSI - REPACKING (Harus sama dg repack)' },
-  { key: 'hilang', label: 'HILANG', rumus: 'REGISTER NBH --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
-  { key: 'pengeluaranLain', label: 'LAIN2 (Pengeluaran)', rumus: 'LPP RETUR + LPP RUSAK (Penerimaan Baik) + BA RETUR IDM (DPP)', rule: '(IAS - BO - LPP) + (IAS - BO - LPP - REG BA IDM)' },
-  { key: 'so', label: 'SO', rumus: 'LAP REKAP ADJUST SO --> Total', rule: 'IAS - BO - LPP' },
-  { key: 'intransit', label: 'INTRANSIT', rumus: 'AKHIR BULAN HARUS = 0', rule: 'Akhir Bulan HARUS = 0', alert: true },
-  { key: 'penyesuaian', label: 'PENYESUAIAN', rumus: 'REGISTER MPP --> Total - Batal', rule: 'IAS - BO - CETAK REGISTER' },
-  { key: 'koreksi', label: 'KOREKSI', rumus: '-', rule: 'Koreksi Nilai (Tidak Ada Pembanding)', noPembanding: true },
-  { key: 'saldoAkhirBulanME', label: 'SALDO AKHIR BULAN ME', rumus: '-', rule: 'Saldo Akhir Grand Total LPP 01 (Hasil Akhir)', isHeader: true, noPembanding: true }
+  {
+    key: 'saldoAkhirSebelumME',
+    label: 'SALDO AKHIR BULAN SEBELUM ME',
+    rumus: '',
+    rule: '',
+    tanBg: true,
+    emptyRight: true
+  },
+  {
+    key: 'saldoAwalBulanME',
+    label: 'SALDO AWAL BULAN ME',
+    rumus: '',
+    rule: '',
+    tanBg: true,
+    hasMiddleZero: true,
+    emptyRight: true
+  },
+  {
+    key: 'pembelianMurni',
+    label: 'PEMBELIAN MURNI',
+    rumus: 'LAP DFTR PEMBELIAN --> Gross - Potongan + Disc4',
+    rule: 'IAS - BO - LAPORAN2-LAPORAN DFTR PEMBELIAN',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'pembelianBonus',
+    label: 'PEMBELIAN BONUS',
+    rumus: '',
+    rule: '',
+    tanBg: true,
+    dashIfZero: true,
+    yellowRule: true
+  },
+  {
+    key: 'transferIn',
+    label: 'TRANSFER IN',
+    rumus: 'REGISTER TAC + LAP TRANSFER HBV --> Total + Batal',
+    rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'returPenjualan',
+    label: 'RETUR PENJUALAN',
+    rumus: 'OMI>>LAP REGISTER BARANG RETUR --> Total',
+    rule: '<span style="color: #ff0000; font-weight: bold;">Kalo selisih berarti ada yang belum BPBR</span>',
+    tanBg: true,
+    redRow: true,
+    yellowRule: true
+  },
+  {
+    key: 'repack',
+    label: 'REPACK',
+    rumus: 'LAPORAN REPACKING --> HARUS SAMA DENGAN PREPACK',
+    rule: 'IAS - BO - TRANSAKSI - REPACKING <span style="color: #ff0000;">(Harus sama dengan prepack)</span>',
+    tanBg: true,
+    yellowNilai: true,
+    yellowRule: true
+  },
+  {
+    key: 'penerimaanLain',
+    label: 'LAIN2',
+    rumus: 'LPP RETUR + LPP RUSAK --> Pengeluaran Lain Baik',
+    rule: 'IAS - BO - LPP',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'penjualan',
+    label: 'PENJUALAN',
+    rumus: 'LAPORAN PENJUALAN --> HPP RATA2',
+    rule: 'IAS - FO - LAP. KASIR (PER DEPARTEMENT) - <span style="color: #ff0000; font-weight: bold;">Dibawah 5000 OK</span>',
+    tanBg: true,
+    redSelisih: true,
+    yellowRule: true,
+    tolerance: 5000
+  },
+  {
+    key: 'transferOut',
+    label: 'TRANSFER OUT',
+    rumus: 'REGISTER SURAT JALAN + LAP TRANSFER HBV--> Total + Batal',
+    rule: '(IAS - BO - CETAK REGISTER) + (IAS - BO - LAPORAN2)',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'prepack',
+    label: 'PREPACK',
+    rumus: 'LAPORAN PREPACK --> HARUS SAMA DENGAN REPACKING',
+    rule: 'IAS - BO - TRANSAKSI - REPACKING <span style="color: #ff0000;">(Harus sama dengan repack)</span>',
+    tanBg: true,
+    yellowNilai: true,
+    yellowRule: true
+  },
+  {
+    key: 'hilang',
+    label: 'HILANG',
+    rumus: 'REGISTER NBH --> Total - Batal',
+    rule: 'IAS - BO - CETAK REGISTER',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'pengeluaranLain',
+    label: 'LAIN2',
+    rumus: 'LPP RETUR + LPP RUSAK (Penerimaan Baik) + BA RETUR IDM (DPP)',
+    rule: '(IAS - BO - LPP) + (IAS - BO - LPP - REGISTER BA IDM (REKAP))',
+    tanBg: true,
+    pinkNilai: true,
+    yellowRule: true
+  },
+  {
+    key: 'so',
+    label: 'SO',
+    rumus: 'LAP REKAP ADJUST SO --> Total',
+    rule: 'IAS - BO - LPP',
+    tanBg: true,
+    yellowRule: true
+  },
+  {
+    key: 'penyesuaian',
+    label: 'PENYESUAIAN',
+    rumus: 'REGISTER MPP --> Total - Batal',
+    rule: 'IAS - BO - CETAK REGISTER',
+    greenRow: true
+  },
+  {
+    key: 'koreksi',
+    label: '<span style="color: #ff0000; font-weight: bold;">KOREKSI</span>',
+    rumus: '',
+    rule: '',
+    tanBg: true,
+    cyanVal: true,
+    noPembanding: true
+  },
+  {
+    key: 'saldoAkhirBulanME',
+    label: 'SALDO AKHIR BULAN ME',
+    rumus: '',
+    rule: '',
+    tanBg: true,
+    isFinalTotal: true,
+    noPembanding: true
+  }
 ];
 
 const ANTAR_LPP_ITEMS = [
@@ -2050,6 +2196,8 @@ function renderKroscekTables() {
   const pem = kroscekState.pembanding || {};
   const antar = kroscekState.antarLpp || {};
 
+  const searchFilter = (document.getElementById('inputFilterKroscek')?.value || '').trim().toLowerCase();
+
   let totalSelisihCount = 0;
   let mainHtml = '';
 
@@ -2057,7 +2205,7 @@ function renderKroscekTables() {
     const vLpp = parseInt(lpp[row.key] || 0, 10);
     let vPem = parseInt(pem[row.key] || 0, 10);
 
-    // Jika pembanding saldoAwalBulanME belum terisi, otomatis gunakan saldoAkhirSebelumME (LPP Bulan Lalu)
+    // Auto sync saldo awal bulan ME dari saldo akhir bulan lalu jika kosong
     if (row.key === 'saldoAwalBulanME' && !vPem && lpp.saldoAkhirSebelumME) {
       vPem = parseInt(lpp.saldoAkhirSebelumME, 10);
       pem.saldoAwalBulanME = vPem;
@@ -2078,49 +2226,84 @@ function renderKroscekTables() {
       if (!isOk) totalSelisihCount++;
     }
 
-    const badgeSelisihClass = isOk
-      ? 'background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4);'
-      : 'background: rgba(239, 68, 68, 0.25); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); font-weight: 800;';
+    // Apply search filter if active
+    if (searchFilter) {
+      const matchLabel = (row.label || '').toLowerCase().includes(searchFilter);
+      const matchRumus = (row.rumus || '').toLowerCase().includes(searchFilter);
+      const matchRule = (row.rule || '').toLowerCase().includes(searchFilter);
+      if (!matchLabel && !matchRumus && !matchRule) return;
+    }
 
-    const rowBg = row.isHeader
-      ? 'background: rgba(255,255,255,0.03); font-weight: 700;'
-      : '';
+    // Cell classes
+    const col1Class = row.greenRow ? 'cell-green' : (row.tanBg ? 'cell-tan' : 'cell-white');
+    const col2Class = row.cyanVal ? 'cell-cyan' : 'cell-white';
+    const col3Class = row.greenRow ? 'cell-green' : (row.redRow ? 'cell-red' : (row.tanBg ? 'cell-tan' : 'cell-white'));
+    const col4Class = row.greenRow ? 'cell-green' : (row.redRow ? 'cell-red' : (row.yellowNilai ? 'cell-yellow' : (row.pinkNilai ? 'cell-pink' : 'cell-white')));
+    const col5Class = row.greenRow ? 'cell-green' : (row.redRow || row.redSelisih ? 'cell-red' : 'cell-white');
+    const col6Class = row.greenRow ? 'cell-green' : (row.yellowRule ? 'cell-yellow' : 'cell-white');
 
-    const pembandingHtml = row.noPembanding
-      ? `<div style="text-align: center; color: var(--text-muted); font-size: 11px; font-style: italic;">-</div>`
-      : `<input type="text" class="custom-input kroscek-pem-input" data-key="${row.key}" value="${formatRp(vPem)}"
-          style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 600; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(6, 182, 212, 0.3);">`;
+    // Values formatted
+    let displayLpp = formatRp(vLpp);
+    if (row.dashIfZero && vLpp === 0) displayLpp = '-';
 
-    const selisihHtml = row.noPembanding
-      ? `<span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25);">-</span>`
-      : `<span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; ${badgeSelisihClass}">
-          ${selisih > 0 ? '+' : ''}${formatRp(selisih)}
-        </span>`;
+    // Cell 2 (Data LPP)
+    const lppCell = `
+      <td class="${col2Class}" style="text-align: ${row.dashIfZero && vLpp === 0 ? 'center' : 'right'}; font-weight: ${row.isFinalTotal || row.cyanVal ? '700' : 'normal'};">
+        <input type="text" class="excel-input kroscek-lpp-input" data-key="${row.key}" value="${displayLpp}">
+      </td>
+    `;
+
+    // Cell 3 (Kroscek Data Laporan / Rumus)
+    let col3Content = row.rumus || '';
+    if (row.hasMiddleZero) {
+      col3Content = `<div style="display: flex; justify-content: space-between; align-items: center;"><span style="background: #ffffff; padding: 0 4px; border: 1px solid #7f7f7f; font-weight: normal;">0</span><span></span></div>`;
+    }
+    const rumusCell = `<td class="${col3Class}" style="padding-left: 6px;">${col3Content}</td>`;
+
+    // Cell 4 (Nilai Pembanding)
+    let pemCell = '';
+    if (row.noPembanding || row.emptyRight) {
+      pemCell = `<td class="${col4Class}"></td>`;
+    } else {
+      pemCell = `
+        <td class="${col4Class}" style="text-align: right;">
+          <input type="text" class="excel-input kroscek-pem-input" data-key="${row.key}" value="${formatRp(vPem)}">
+        </td>
+      `;
+    }
+
+    // Cell 5 (Selisih)
+    let selisihCell = '';
+    if (row.noPembanding || row.emptyRight) {
+      selisihCell = `<td class="${col5Class}"></td>`;
+    } else {
+      selisihCell = `
+        <td class="${col5Class}" style="text-align: right; font-weight: ${!isOk ? '700' : 'normal'}; color: ${!isOk ? '#ff0000' : 'inherit'};">
+          ${formatRp(selisih)}
+        </td>
+      `;
+    }
+
+    // Cell 6 (Aturan & Sumber IAS)
+    const ruleCell = `<td class="${col6Class}">${row.rule || ''}</td>`;
 
     mainHtml += `
-      <tr style="${rowBg}">
-        <td style="padding: 6px 12px; font-weight: 600; color: ${row.alert ? '#ef4444' : 'var(--text-main)'};">
-          ${escapeHtml(row.label)}
+      <tr>
+        <td class="${col1Class}" style="padding-left: 6px; font-weight: ${row.isFinalTotal ? '700' : '600'};">
+          ${row.label}
         </td>
-        <td style="padding: 4px 8px; text-align: right; background: rgba(16, 185, 129, 0.08);">
-          <input type="text" class="custom-input kroscek-lpp-input" data-key="${row.key}" value="${formatRp(vLpp)}"
-            style="width: 100%; height: 28px; text-align: right; font-size: 11.5px; font-weight: 700; color: #10b981; padding: 2px 6px; background: rgba(0,0,0,0.3); border-color: rgba(16, 185, 129, 0.35);" title="Data LPP 01: ${escapeHtml(row.label)}">
-        </td>
-        <td style="padding: 6px 12px; color: var(--text-muted); font-size: 11px;">
-          ${row.rumus ? `<span style="padding: 2px 6px; background: rgba(6, 182, 212, 0.1); border-radius: 4px; color: #06b6d4;">${escapeHtml(row.rumus)}</span>` : '-'}
-        </td>
-        <td style="padding: 4px 8px; text-align: right;">
-          ${pembandingHtml}
-        </td>
-        <td style="padding: 6px 12px; text-align: right;">
-          ${selisihHtml}
-        </td>
-        <td style="padding: 6px 12px; font-size: 11px; color: #f59e0b;">
-          ${escapeHtml(row.rule)}
-        </td>
+        ${lppCell}
+        ${rumusCell}
+        ${pemCell}
+        ${selisihCell}
+        ${ruleCell}
       </tr>
     `;
   });
+
+  if (!mainHtml) {
+    mainHtml = `<tr><td colspan="6" style="text-align: center; padding: 18px; color: #666; background: #fff;">Tidak ada baris mutasi yang cocok dengan kata kunci pencarian.</td></tr>`;
+  }
 
   tbodyKroscekMain.innerHTML = mainHtml;
 
@@ -2135,7 +2318,7 @@ function renderKroscekTables() {
 
     const diffBadge = ok
       ? '<span style="color: #22c55e; font-weight: 700;">0 (OK)</span>'
-      : `<span style="color: #ef4444; font-weight: 800;">${diff > 0 ? '+' : ''}${formatRp(diff)} ⚠️</span>`;
+      : `<span style="color: #ef4444; font-weight: 800;">${diff > 0 ? '+' : ''}${formatRp(diff)}</span>`;
 
     antarHtml += `
       <tr>
@@ -2157,13 +2340,43 @@ function renderKroscekTables() {
 
   tbodyAntarLpp.innerHTML = antarHtml;
 
+  // Update 3 KPI Metric Cards
+  const kpiLppSaldoAkhir = document.getElementById('kpiLppSaldoAkhir');
+  const kpiMutasiTotal = document.getElementById('kpiMutasiTotal');
+  const kpiCardStatus = document.getElementById('kpiCardStatus');
+  const kpiTotalSelisih = document.getElementById('kpiTotalSelisih');
+
+  const sakVal = parseInt(lpp.saldoAkhirBulanME || 0, 10);
+  const beliVal = parseInt(lpp.pembelianMurni || 0, 10);
+
+  if (kpiLppSaldoAkhir) {
+    kpiLppSaldoAkhir.textContent = `Rp ${formatRp(sakVal)}`;
+  }
+  if (kpiMutasiTotal) {
+    kpiMutasiTotal.textContent = `Rp ${formatRp(beliVal)}`;
+  }
+  if (kpiTotalSelisih) {
+    kpiTotalSelisih.textContent = `${totalSelisihCount} Item`;
+  }
+  if (kpiCardStatus) {
+    if (totalSelisihCount === 0) {
+      kpiCardStatus.textContent = '● 0 SELISIH (KLOP)';
+      kpiCardStatus.style.color = '#22c55e';
+    } else {
+      kpiCardStatus.textContent = `⚠️ ${totalSelisihCount} BERSELISIH`;
+      kpiCardStatus.style.color = '#ef4444';
+    }
+  }
+
   // Attach event listeners for real-time calculation (Data LPP 01, Pembanding, Antar LPP)
   document.querySelectorAll('.kroscek-lpp-input').forEach(inp => {
     inp.addEventListener('input', (e) => {
       const key = e.target.getAttribute('data-key');
       const num = parseInputNumber(e.target.value);
       kroscekState.lpp01[key] = num;
-      e.target.value = formatRp(num);
+      updateKroscekLiveCalculations();
+    });
+    inp.addEventListener('blur', () => {
       renderKroscekTables();
     });
   });
@@ -2173,7 +2386,9 @@ function renderKroscekTables() {
       const key = e.target.getAttribute('data-key');
       const num = parseInputNumber(e.target.value);
       kroscekState.pembanding[key] = num;
-      e.target.value = formatRp(num);
+      updateKroscekLiveCalculations();
+    });
+    inp.addEventListener('blur', () => {
       renderKroscekTables();
     });
   });
@@ -2183,27 +2398,64 @@ function renderKroscekTables() {
       const key = e.target.getAttribute('data-key');
       const num = parseInputNumber(e.target.value);
       kroscekState.antarLpp[key] = num;
-      e.target.value = formatRp(num);
+      updateKroscekLiveCalculations();
+    });
+    inp.addEventListener('blur', () => {
       renderKroscekTables();
     });
   });
 
-  // Update Summary Banner status
+  // Update Summary Banner status (if present)
   if (statusKroscekSummary && bannerTidakBolehSelisih) {
     if (totalSelisihCount === 0) {
       statusKroscekSummary.innerHTML = '<span>●</span> SEMUA SESUAI (0 SELISIH)';
       statusKroscekSummary.style.background = 'rgba(34, 197, 94, 0.2)';
       statusKroscekSummary.style.color = '#22c55e';
       statusKroscekSummary.style.border = '1px solid rgba(34, 197, 94, 0.4)';
-      bannerTidakBolehSelisih.style.border = '2px dashed #f97316';
-      bannerTidakBolehSelisih.style.background = 'linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.05))';
     } else {
       statusKroscekSummary.innerHTML = `<span>⚠️</span> PERHATIAN: ${totalSelisihCount} ITEM BERSELISIH!`;
       statusKroscekSummary.style.background = 'rgba(239, 68, 68, 0.3)';
       statusKroscekSummary.style.color = '#ef4444';
       statusKroscekSummary.style.border = '1px solid rgba(239, 68, 68, 0.6)';
-      bannerTidakBolehSelisih.style.border = '2px solid #ef4444';
-      bannerTidakBolehSelisih.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.1))';
+    }
+  }
+}
+
+function updateKroscekLiveCalculations() {
+  if (!kroscekState) return;
+  const lpp = kroscekState.lpp01 || {};
+  const pem = kroscekState.pembanding || {};
+
+  let totalSelisihCount = 0;
+
+  KROSCEK_ROWS.forEach(row => {
+    if (row.noPembanding || row.emptyRight) return;
+    const vLpp = parseInt(lpp[row.key] || 0, 10);
+    const vPem = parseInt(pem[row.key] || 0, 10);
+    const selisih = vLpp - vPem;
+    let isOk = (selisih === 0);
+    if (row.tolerance && Math.abs(selisih) <= row.tolerance) isOk = true;
+    if (!isOk) totalSelisihCount++;
+  });
+
+  const kpiLppSaldoAkhir = document.getElementById('kpiLppSaldoAkhir');
+  const kpiMutasiTotal = document.getElementById('kpiMutasiTotal');
+  const kpiCardStatus = document.getElementById('kpiCardStatus');
+  const kpiTotalSelisih = document.getElementById('kpiTotalSelisih');
+
+  const sakVal = parseInt(lpp.saldoAkhirBulanME || 0, 10);
+  const beliVal = parseInt(lpp.pembelianMurni || 0, 10);
+
+  if (kpiLppSaldoAkhir) kpiLppSaldoAkhir.textContent = `Rp ${formatRp(sakVal)}`;
+  if (kpiMutasiTotal) kpiMutasiTotal.textContent = `Rp ${formatRp(beliVal)}`;
+  if (kpiTotalSelisih) kpiTotalSelisih.textContent = `${totalSelisihCount} Item`;
+  if (kpiCardStatus) {
+    if (totalSelisihCount === 0) {
+      kpiCardStatus.textContent = '● 0 SELISIH (KLOP)';
+      kpiCardStatus.style.color = '#22c55e';
+    } else {
+      kpiCardStatus.textContent = `⚠️ ${totalSelisihCount} BERSELISIH`;
+      kpiCardStatus.style.color = '#ef4444';
     }
   }
 }
@@ -2481,6 +2733,338 @@ if (btnSaveKroscek) {
   });
 }
 
+// 1-Click Hero Action: Auto-Tarik & Kroscek Semua Data (Realtime)
+const btnAutoSyncAllKroscek = document.getElementById('btnAutoSyncAllKroscek');
+if (btnAutoSyncAllKroscek) {
+  btnAutoSyncAllKroscek.addEventListener('click', async () => {
+    const origHtml = btnAutoSyncAllKroscek.innerHTML;
+    btnAutoSyncAllKroscek.disabled = true;
+    btnAutoSyncAllKroscek.innerHTML = `<span>⏳</span> Sedang Sinkronisasi Semua Data...`;
+
+    const p1 = iasSharedPeriode1 ? iasSharedPeriode1.value.trim() : '01/09/2026';
+    const p2 = iasSharedPeriode2 ? iasSharedPeriode2.value.trim() : '30/09/2026';
+
+    const pBox = document.getElementById('iasProgressBox');
+    const pFill = document.getElementById('iasProgressFill');
+    const pText = document.getElementById('iasProgressText');
+    const pStep = document.getElementById('iasProgressStep');
+
+    if (pBox) pBox.style.display = 'block';
+    if (pFill) pFill.style.width = '5%';
+    if (pText) pText.textContent = 'Memulai proses sinkronisasi otomatis...';
+    if (pStep) pStep.textContent = 'Langkah 1/6';
+
+    addIasLog('info', `🚀 Memulai Auto-Sync & Kroscek Semua Data (${p1} s/d ${p2})...`);
+
+    try {
+      const res = await fetch('/api/ias/kroscek/auto-sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periode1: p1, periode2: p2 })
+      });
+      const data = await res.json();
+      if (data.success && (data.kroscekData || data.data)) {
+        kroscekState = data.kroscekData || data.data;
+        renderKroscekTables();
+        await loadLatestRegisterLpp();
+        showAlert('success', 'Auto-Sync Selesai!', `Semua data LPP 01, Pembelian, Penjualan, LPP 02, dan LPP 03 telah berhasil ditarik & disinkronkan ke tabel kroscek!`);
+      } else {
+        showAlert('error', 'Auto-Sync Gagal', data.error || 'Terjadi kesalahan saat memproses laporan.');
+      }
+    } catch (err) {
+      showAlert('error', 'Error Jaringan', err.message);
+    } finally {
+      btnAutoSyncAllKroscek.disabled = false;
+      btnAutoSyncAllKroscek.innerHTML = origHtml;
+      setTimeout(() => {
+        if (pBox) pBox.style.display = 'none';
+      }, 4000);
+    }
+  });
+}
+
+// Search Filter Event for Mutasi Table
+const inputFilterKroscek = document.getElementById('inputFilterKroscek');
+if (inputFilterKroscek) {
+  inputFilterKroscek.addEventListener('input', () => {
+    renderKroscekTables();
+  });
+}
+
+// Quick Session Login / Logout Toggle Button
+const btnIasQuickLoginToggle = document.getElementById('btnIasQuickLoginToggle');
+if (btnIasQuickLoginToggle) {
+  btnIasQuickLoginToggle.addEventListener('click', async () => {
+    const isConnected = btnIasQuickLoginToggle.getAttribute('data-connected') === 'true';
+    if (isConnected) {
+      btnIasQuickLoginToggle.disabled = true;
+      btnIasQuickLoginToggle.textContent = 'Memutuskan...';
+      try {
+        await fetch('/api/ias/session/logout', { method: 'POST' });
+        showAlert('info', 'Sesi Diputuskan', 'Koneksi ke Web IAS telah ditutup.');
+        await checkIasSessionStatus(false);
+      } catch (err) {
+        showAlert('error', 'Gagal Logout', err.message);
+      } finally {
+        btnIasQuickLoginToggle.disabled = false;
+      }
+    } else {
+      btnIasQuickLoginToggle.disabled = true;
+      btnIasQuickLoginToggle.textContent = 'Menghubungkan...';
+      try {
+        const payload = {
+          baseUrl: inputIasUrl ? inputIasUrl.value.trim() : 'http://172.31.146.190',
+          koneksi: selectIasKoneksi ? selectIasKoneksi.value : 'dc',
+          username: inputIasUser ? inputIasUser.value.trim() : 'RIS',
+          password: inputIasPassword ? inputIasPassword.value.trim() : '',
+          autoResetSession: true
+        };
+        const res = await fetch('/api/ias/test-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showAlert('success', 'Terhubung ke Web IAS', 'Sesi browser Web IAS aktif dan siap digunakan.');
+          await checkIasSessionStatus(false);
+          loadIasTasksStatus(true);
+        } else {
+          showAlert('error', 'Gagal Terhubung', data.error || 'Periksa URL dan kredensial di modal pengaturan.');
+        }
+      } catch (err) {
+        showAlert('error', 'Error Jaringan', err.message);
+      } finally {
+        btnIasQuickLoginToggle.disabled = false;
+      }
+    }
+  });
+}
+
+// Sub-Tabs Navigation for IAS Module
+function initIasSubTabs() {
+  const tabBtns = document.querySelectorAll('.ias-sub-tabs .ias-tab-item');
+  const tabPanes = document.querySelectorAll('.ias-tab-pane');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-tab');
+      const targetPane = document.getElementById(targetId);
+      if (targetPane) {
+        targetPane.classList.add('active');
+      }
+    });
+  });
+
+  // Also bind inline table filters for Tab 3
+  const inputInline = document.getElementById('inputFilterLppTableInline');
+  const selectInline = document.getElementById('selectFilterLppDivisiInline');
+  if (inputInline) inputInline.addEventListener('input', renderLppTable);
+  if (selectInline) selectInline.addEventListener('change', renderLppTable);
+}
+
+// Manual Dropdown Menu Interaction
+function initIasManualDropdown() {
+  const btnManual = document.getElementById('btnIasManualMenu');
+  const dropdownMenu = document.getElementById('iasDropdownMenu');
+
+  if (!btnManual || !dropdownMenu) return;
+
+  btnManual.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdownMenu.classList.toggle('active');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!dropdownMenu.contains(e.target) && e.target !== btnManual) {
+      dropdownMenu.classList.remove('active');
+    }
+  });
+}
+
+// Realtime Progress Handler
+function handleIasTaskProgress(data) {
+  const pBox = document.getElementById('iasProgressBox');
+  const pFill = document.getElementById('iasProgressFill');
+  const pText = document.getElementById('iasProgressText');
+  const pStep = document.getElementById('iasProgressStep');
+
+  if (!pBox) return;
+
+  if (data.active || data.status === 'RUNNING') {
+    pBox.style.display = 'block';
+    if (pFill && data.percent !== undefined) pFill.style.width = `${data.percent}%`;
+    if (pText && data.label) pText.textContent = data.label;
+    if (pStep && data.step && data.totalSteps) pStep.textContent = `Langkah ${data.step}/${data.totalSteps}`;
+  } else if (data.status === 'DONE') {
+    if (pFill) pFill.style.width = '100%';
+    if (pText) pText.textContent = data.label || 'Selesai!';
+    setTimeout(() => {
+      pBox.style.display = 'none';
+    }, 4000);
+  } else if (data.status === 'ERROR') {
+    if (pText) pText.textContent = `Gagal: ${data.error || 'Terjadi kesalahan'}`;
+    setTimeout(() => {
+      pBox.style.display = 'none';
+    }, 6000);
+  }
+}
+
+// Realtime Session State Handler
+function renderIasSessionState(session) {
+  const iasStatusPill = document.getElementById('iasStatusPill');
+  const iasStatusText = document.getElementById('iasStatusText');
+  const badgeIasKoneksi = document.getElementById('badgeIasKoneksi');
+  const btnToggle = document.getElementById('btnIasQuickLoginToggle');
+
+  if (!session) return;
+
+  const isConn = !!session.isConnected;
+  if (iasStatusPill) {
+    iasStatusPill.className = `status-pill ${isConn ? 'connected' : 'disconnected'}`;
+  }
+  if (iasStatusText) {
+    iasStatusText.textContent = isConn ? `TERHUBUNG (${(session.user || 'USER').toUpperCase()})` : 'TERPUTUS';
+  }
+  if (badgeIasKoneksi && session.koneksi) {
+    badgeIasKoneksi.textContent = session.koneksi.toUpperCase();
+  }
+  if (btnToggle) {
+    btnToggle.setAttribute('data-connected', isConn ? 'true' : 'false');
+    btnToggle.textContent = isConn ? 'Putuskan' : 'Hubungkan';
+    btnToggle.className = `btn btn-xs ${isConn ? 'btn-ghost' : 'btn-primary'}`;
+  }
+}
+
+// Inisialisasi Realtime Terminal Streaming (Server-Sent Events / 0ms Latency)
+function initRealtimeLogStream() {
+  const iasSseStatus = document.getElementById('iasSseStatus');
+  const iasSseText = document.getElementById('iasSseText');
+
+  if (typeof EventSource === 'undefined') {
+    console.warn('Browser does not support SSE. Falling back to polling.');
+    setInterval(fetchIasLogs, 3000);
+    return;
+  }
+
+  const evtSource = new EventSource('/api/logs/stream');
+
+  evtSource.onopen = () => {
+    if (iasSseStatus) {
+      iasSseStatus.className = 'badge badge-success';
+      if (iasSseText) iasSseText.textContent = 'Realtime SSE';
+    }
+  };
+
+  evtSource.onmessage = (e) => {
+    try {
+      const parsed = JSON.parse(e.data);
+      if (parsed && Array.isArray(parsed.logs)) {
+        renderIasLogs(parsed.logs);
+      }
+    } catch (err) {}
+  };
+
+  evtSource.addEventListener('ias-task-status', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      handleIasTaskProgress(data);
+    } catch (err) {}
+  });
+
+  evtSource.addEventListener('ias-kroscek-update', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data) {
+        kroscekState = data;
+        renderKroscekTables();
+      }
+    } catch (err) {}
+  });
+
+  evtSource.addEventListener('ias-session-update', (e) => {
+    try {
+      const session = JSON.parse(e.data);
+      renderIasSessionState(session);
+    } catch (err) {}
+  });
+
+  evtSource.onerror = () => {
+    if (iasSseStatus) {
+      iasSseStatus.className = 'badge badge-warning';
+      if (iasSseText) iasSseText.textContent = 'Reconnecting...';
+    }
+  };
+}
+
+// Admin Navigation & View Switcher (Memisahkan Tampilan CMS dan IAS)
+function initAdminNav() {
+  const navLinks = document.querySelectorAll('.nav-link[data-view]');
+  const allViews = document.querySelectorAll('.admin-view');
+  const currentViewTitle = document.getElementById('currentViewTitle');
+  const btnToggleSidebar = document.getElementById('btnToggleSidebar');
+  const adminSidebar = document.getElementById('adminSidebar');
+
+  function switchView(targetViewId) {
+    if (!targetViewId) return;
+
+    navLinks.forEach(l => {
+      if (l.getAttribute('data-view') === targetViewId) {
+        l.classList.add('active');
+      } else {
+        l.classList.remove('active');
+      }
+    });
+
+    allViews.forEach(vEl => {
+      if (vEl.id === targetViewId) {
+        vEl.classList.add('active');
+        vEl.style.display = 'block';
+      } else {
+        vEl.classList.remove('active');
+        vEl.style.display = 'none';
+      }
+    });
+
+    if (currentViewTitle) {
+      currentViewTitle.textContent = (targetViewId === 'viewIAS') ? 'Otomasi Web IAS' : 'CMS StokPoin';
+    }
+
+    localStorage.setItem('activeAdminView', targetViewId);
+  }
+
+  navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetView = link.getAttribute('data-view');
+      switchView(targetView);
+    });
+  });
+
+  // Restore active view (default to viewStokPoin or saved)
+  const savedView = localStorage.getItem('activeAdminView') || 'viewStokPoin';
+  switchView(savedView);
+
+  // Sidebar toggle
+  if (btnToggleSidebar && adminSidebar) {
+    btnToggleSidebar.addEventListener('click', () => {
+      adminSidebar.classList.toggle('collapsed');
+    });
+  }
+
+  // Database shortcut button
+  const btnSidebarDb = document.getElementById('btnSidebarDb');
+  if (btnSidebarDb && dbModalOverlay) {
+    btnSidebarDb.addEventListener('click', () => {
+      dbModalOverlay.classList.add('active');
+    });
+  }
+}
+
 // Initial Load
 initTheme();
 initAdminNav();
@@ -2490,8 +3074,8 @@ loadIasConfig();
 checkIasSessionStatus(false);
 loadLatestRegisterLpp();
 loadKroscekData();
-
-// Inisialisasi Realtime Terminal Streaming (Server-Sent Events / 0ms Latency)
+initIasSubTabs();
+initIasManualDropdown();
 initRealtimeLogStream();
 
 
